@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { categoryById, PAYMENT_CATEGORY } from '@/lib/categories';
+import { hexAlpha, shape, useTheme } from '@/theme';
 import { Icon } from './Icon';
 
 export function initials(name: string) {
@@ -9,7 +10,7 @@ export function initials(name: string) {
 
 export function Avatar({ name, color, size = 40 }: { name: string; color: string; size?: number }) {
   return (
-    <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
+    <View style={[styles.center, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
       <Text style={[styles.initials, { fontSize: size * 0.38 }]} allowFontScaling={false}>
         {initials(name)}
       </Text>
@@ -17,9 +18,10 @@ export function Avatar({ name, color, size = 40 }: { name: string; color: string
   );
 }
 
-export function EmojiTile({ emoji, size = 44, tint = 'rgba(120,120,128,0.14)' }: { emoji: string; size?: number; tint?: string }) {
+export function EmojiTile({ emoji, size = 48 }: { emoji: string; size?: number }) {
+  const t = useTheme();
   return (
-    <View style={[styles.tile, { width: size, height: size, borderRadius: size * 0.28, backgroundColor: tint }]}>
+    <View style={[styles.center, { width: size, height: size, borderRadius: size * 0.32, backgroundColor: t.colors.secondaryContainer }]}>
       <Text style={{ fontSize: size * 0.5 }} allowFontScaling={false}>
         {emoji}
       </Text>
@@ -27,17 +29,23 @@ export function EmojiTile({ emoji, size = 44, tint = 'rgba(120,120,128,0.14)' }:
   );
 }
 
-export function CategoryTile({ category, payment, size = 40 }: { category: string; payment?: boolean; size?: number }) {
+/** Tonal category tile: tinted container with the category's color for the glyph. */
+export function CategoryTile({ category, payment, size = 44 }: { category: string; payment?: boolean; size?: number }) {
+  const t = useTheme();
   const c = payment ? PAYMENT_CATEGORY : categoryById(category);
   return (
-    <View style={[styles.tile, { width: size, height: size, borderRadius: size * 0.28, backgroundColor: c.color }]}>
-      <Icon name={c.sf} md={c.md} size={size * 0.5} color="#FFFFFF" />
+    <View
+      style={[
+        styles.center,
+        { width: size, height: size, borderRadius: Math.min(shape.md, size * 0.3), backgroundColor: hexAlpha(c.color, t.dark ? 0.24 : 0.16) },
+      ]}
+    >
+      <Icon name={c.icon} size={size * 0.52} color={c.color} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  circle: { alignItems: 'center', justifyContent: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center' },
   initials: { color: '#FFFFFF', fontWeight: '600', letterSpacing: 0.3 },
-  tile: { alignItems: 'center', justifyContent: 'center', borderCurve: 'continuous' },
 });

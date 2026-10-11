@@ -1,41 +1,38 @@
-import type { SymbolViewProps } from 'expo-symbols';
-
-type SF = Extract<SymbolViewProps['name'], string>;
+import type { IconName } from '@/components/Icon';
 
 export interface Category {
   id: string;
   label: string;
   group: 'Food' | 'Home' | 'Transport' | 'Life' | 'Other';
-  sf: SF;
-  md: string; // Material symbol name for Android / web
+  icon: IconName;
   color: string;
 }
 
 export const CATEGORIES: Category[] = [
-  { id: 'general', label: 'General', group: 'Other', sf: 'square.grid.2x2.fill', md: 'category', color: '#8E8E93' },
-  { id: 'groceries', label: 'Groceries', group: 'Food', sf: 'cart.fill', md: 'shopping_cart', color: '#34C759' },
-  { id: 'dining', label: 'Dining out', group: 'Food', sf: 'fork.knife', md: 'restaurant', color: '#FF9500' },
-  { id: 'coffee', label: 'Coffee', group: 'Food', sf: 'cup.and.saucer.fill', md: 'local_cafe', color: '#A2845E' },
-  { id: 'drinks', label: 'Drinks', group: 'Food', sf: 'wineglass.fill', md: 'wine_bar', color: '#AF52DE' },
-  { id: 'rent', label: 'Rent', group: 'Home', sf: 'house.fill', md: 'home', color: '#5856D6' },
-  { id: 'utilities', label: 'Utilities', group: 'Home', sf: 'bolt.fill', md: 'bolt', color: '#FFCC00' },
-  { id: 'internet', label: 'Internet & phone', group: 'Home', sf: 'wifi', md: 'wifi', color: '#32ADE6' },
-  { id: 'household', label: 'Household', group: 'Home', sf: 'sofa.fill', md: 'chair', color: '#AC8E68' },
-  { id: 'transport', label: 'Transport', group: 'Transport', sf: 'tram.fill', md: 'train', color: '#007AFF' },
-  { id: 'taxi', label: 'Taxi', group: 'Transport', sf: 'car.fill', md: 'local_taxi', color: '#FFB800' },
-  { id: 'fuel', label: 'Fuel', group: 'Transport', sf: 'fuelpump.fill', md: 'local_gas_station', color: '#FF3B30' },
-  { id: 'flights', label: 'Flights', group: 'Transport', sf: 'airplane', md: 'flight', color: '#5AC8FA' },
-  { id: 'lodging', label: 'Hotel', group: 'Life', sf: 'bed.double.fill', md: 'hotel', color: '#30B0C7' },
-  { id: 'entertainment', label: 'Entertainment', group: 'Life', sf: 'ticket.fill', md: 'local_activity', color: '#FF2D55' },
-  { id: 'shopping', label: 'Shopping', group: 'Life', sf: 'bag.fill', md: 'shopping_bag', color: '#FF6482' },
-  { id: 'health', label: 'Health', group: 'Life', sf: 'cross.case.fill', md: 'medical_services', color: '#FF453A' },
-  { id: 'sports', label: 'Sports', group: 'Life', sf: 'figure.run', md: 'directions_run', color: '#00C7BE' },
-  { id: 'gifts', label: 'Gifts', group: 'Life', sf: 'gift.fill', md: 'redeem', color: '#BF5AF2' },
-  { id: 'subscriptions', label: 'Subscriptions', group: 'Life', sf: 'play.rectangle.fill', md: 'subscriptions', color: '#E5484D' },
+  { id: 'general', label: 'General', group: 'Other', icon: 'shape', color: '#8E8E93' },
+  { id: 'groceries', label: 'Groceries', group: 'Food', icon: 'cart', color: '#34C759' },
+  { id: 'dining', label: 'Dining out', group: 'Food', icon: 'silverware-fork-knife', color: '#FF9500' },
+  { id: 'coffee', label: 'Coffee', group: 'Food', icon: 'coffee', color: '#A2845E' },
+  { id: 'drinks', label: 'Drinks', group: 'Food', icon: 'glass-cocktail', color: '#AF52DE' },
+  { id: 'rent', label: 'Rent', group: 'Home', icon: 'home-city', color: '#5856D6' },
+  { id: 'utilities', label: 'Utilities', group: 'Home', icon: 'flash', color: '#FFCC00' },
+  { id: 'internet', label: 'Internet & phone', group: 'Home', icon: 'wifi', color: '#32ADE6' },
+  { id: 'household', label: 'Household', group: 'Home', icon: 'sofa', color: '#AC8E68' },
+  { id: 'transport', label: 'Transport', group: 'Transport', icon: 'train', color: '#007AFF' },
+  { id: 'taxi', label: 'Taxi', group: 'Transport', icon: 'taxi', color: '#FFB800' },
+  { id: 'fuel', label: 'Fuel', group: 'Transport', icon: 'gas-station', color: '#FF3B30' },
+  { id: 'flights', label: 'Flights', group: 'Transport', icon: 'airplane', color: '#5AC8FA' },
+  { id: 'lodging', label: 'Hotel', group: 'Life', icon: 'bed', color: '#30B0C7' },
+  { id: 'entertainment', label: 'Entertainment', group: 'Life', icon: 'ticket', color: '#FF2D55' },
+  { id: 'shopping', label: 'Shopping', group: 'Life', icon: 'shopping', color: '#FF6482' },
+  { id: 'health', label: 'Health', group: 'Life', icon: 'medical-bag', color: '#FF453A' },
+  { id: 'sports', label: 'Sports', group: 'Life', icon: 'run', color: '#00C7BE' },
+  { id: 'gifts', label: 'Gifts', group: 'Life', icon: 'gift', color: '#BF5AF2' },
+  { id: 'subscriptions', label: 'Subscriptions', group: 'Life', icon: 'play-box-multiple', color: '#E5484D' },
 ];
 
 export const PAYMENT_CATEGORY: Category = {
-  id: 'payment', label: 'Payment', group: 'Other', sf: 'banknote.fill', md: 'payments', color: '#34C759',
+  id: 'payment', label: 'Payment', group: 'Other', icon: 'cash-fast', color: '#34C759',
 };
 
 export function categoryById(id: string | null | undefined): Category {
