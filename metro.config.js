@@ -8,6 +8,8 @@ const config = getDefaultConfig(__dirname);
 const ignored = ['.toolchain', '.g', '.localdb', '.npm-cache', 'android', 'ios', 'dist'].map(
   (dir) => new RegExp(`^${path.resolve(__dirname, dir).replace(/[\\/.^$*+?()[\]{}|-]/g, '\\$&')}[\\\\/].*`),
 );
+// Native build output inside packages (written constantly while Gradle runs).
+ignored.push(/[\\/]android[\\/](build|\.cxx|\.gradle)[\\/].*/);
 const existing = config.resolver.blockList;
 config.resolver.blockList = [...(Array.isArray(existing) ? existing : existing ? [existing] : []), ...ignored];
 
