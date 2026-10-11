@@ -1,38 +1,19 @@
 // Runs the Supabase migrations against an in-memory Postgres (PGlite) with a minimal stub of
 // Supabase's auth schema, then exercises the main flows as different users.
 // Usage: npm run test:db
-import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { asUser, createUser, openDatabase } from './lib/local-db.mjs';
 
-const db = new PGlite();
-
-await db.exec(`
-  create role anon nologin; create role authenticated nologin;
-  create schema auth;
-  create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb default '{}');
-  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
-  create publication supabase_realtime;
-  grant usage on schema public to anon, authenticated;
-  grant usage on schema auth to anon, authenticated;
-  grant execute on function auth.uid() to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-`);
-
-for (const file of readdirSync('supabase/migrations').sort()) {
-  try { await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8")); }
-  catch (e) { console.error(`✗ ${file}: ${e.message}`, e.position ?? ''); process.exit(1); }
+let db;
+try {
+  db = await openDatabase();
+} catch (e) {
+  console.error(`✗ ${e.message}`);
+  process.exit(1);
 }
 
-async function signUp(email, name) {
-  const { rows } = await db.query(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [email, { name }]);
-  return rows[0].id;
-}
-async function as(uid, sql, params = []) {
-  await db.exec(`reset role; select set_config('test.uid', '${uid}', false); set role authenticated;`);
-  try { return (await db.query(sql, params)).rows; } finally { await db.exec('reset role;'); }
-}
+const signUp = (email, name) => createUser(db, { email, name });
+const as = (uid, sql, params = []) => asUser(db, uid, async (tx) => (await tx.query(sql, params)).rows);
 async function rejects(promise, re) {
   await assert.rejects(promise, (e) => re.test(e.message));
 }
@@ -106,5 +87,16 @@ await as(alice, `select public.delete_expense($1)`, [e1]);
 assert.equal((await as(carol, 'select * from public.my_balances where other_id = $1', [aliceP])).length, 0, 'deleted expense ignored');
 await as(alice, `select public.restore_expense($1)`, [e1]);
 assert.equal((await as(carol, 'select * from public.my_balances where other_id = $1', [aliceP])).length, 1);
+
+// Account deletion: login gone, profile anonymized, shared history kept for the others
+await as(dave, 'select public.delete_my_account()');
+assert.equal((await db.query('select count(*)::int as n from auth.users where id = $1', [dave])).rows[0].n, 0, 'auth user removed');
+await as(carol, `select public.add_comment($1, 'bye')`, [e1]);
+await as(carol, 'select public.delete_my_account()');
+const [ghost] = (await db.query('select name, email, user_id from public.profiles where id = $1', [carolP])).rows;
+assert.deepEqual(ghost, { name: 'Deleted user', email: null, user_id: null }, 'profile anonymized');
+assert.equal((await as(alice, 'select * from public.comments where author_id = $1', [carolP])).length, 0, 'comments removed');
+assert.ok((await as(alice, 'select * from public.expense_shares where profile_id = $1', [carolP])).length > 0, 'shared history kept');
+await rejects(as(null, 'select public.delete_my_account()'), /permission denied|not signed in/);
 
 console.log('✓ all database checks passed');
