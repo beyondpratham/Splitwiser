@@ -1,46 +1,74 @@
-import { Children, Fragment, isValidElement, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { radius, space, useTheme } from '@/theme';
+import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Text } from 'react-native-paper';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { hexAlpha, space, useTheme } from '@/theme';
 import { Icon } from './Icon';
 
-/** iOS inset-grouped section. */
-export function Section({
+type Position = 'single' | 'first' | 'middle' | 'last';
+
+const OUTER = 20;
+const INNER = 4;
+
+function corners(position: Position) {
+  const top = position === 'single' || position === 'first' ? OUTER : INNER;
+  const bottom = position === 'single' || position === 'last' ? OUTER : INNER;
+  return { borderTopLeftRadius: top, borderTopRightRadius: top, borderBottomLeftRadius: bottom, borderBottomRightRadius: bottom };
+}
+
+/** Material 3 expressive grouped list: segmented rounded container with small gaps. */
+export function ListGroup({
   title,
   footer,
+  action,
   children,
   style,
-  action,
+  animateIndex,
 }: {
   title?: string;
-  footer?: ReactNode;
+  footer?: string;
+  action?: ReactNode;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
-  action?: ReactNode;
+  /** stagger order for the entrance animation */
+  animateIndex?: number;
 }) {
   const t = useTheme();
-  const items = Children.toArray(children).filter(isValidElement);
-  return (
-    <View style={[styles.section, style]}>
+  const items = Children.toArray(children).filter(isValidElement) as ReactElement<{ position?: Position }>[];
+  const body = (
+    <View style={[styles.group, style]}>
       {(title || action) && (
-        <View style={styles.headerRow}>
-          {title ? <Text style={[styles.header, { color: t.text }]}>{title}</Text> : <View />}
+        <View style={styles.titleRow}>
+          {title ? (
+            <Text variant="titleSmall" style={{ color: t.colors.primary }}>
+              {title}
+            </Text>
+          ) : (
+            <View />
+          )}
           {action}
         </View>
       )}
-      <View style={[styles.card, { backgroundColor: t.card }]}>
-        {items.map((child, i) => (
-          <Fragment key={child.key ?? i}>
-            {child}
-            {i < items.length - 1 && <View style={[styles.separator, { backgroundColor: t.separator }]} />}
-          </Fragment>
-        ))}
+      <View style={{ gap: 2 }}>
+        {items.map((child, i) =>
+          cloneElement(child, {
+            key: child.key ?? i,
+            position: items.length === 1 ? 'single' : i === 0 ? 'first' : i === items.length - 1 ? 'last' : 'middle',
+          }),
+        )}
       </View>
-      {typeof footer === 'string' ? <Text style={[styles.footer, { color: t.secondary }]}>{footer}</Text> : footer}
+      {footer && (
+        <Text variant="bodySmall" style={[styles.footer, { color: t.colors.onSurfaceVariant }]}>
+          {footer}
+        </Text>
+      )}
     </View>
   );
+  if (animateIndex == null) return body;
+  return <Animated.View entering={FadeInDown.delay(Math.min(animateIndex, 8) * 45).springify().damping(18)}>{body}</Animated.View>;
 }
 
-export function Row({
+export function ListItem({
   title,
   subtitle,
   left,
@@ -49,9 +77,10 @@ export function Row({
   onPress,
   onLongPress,
   chevron,
-  destructive,
-  tint,
+  tone = 'default',
   disabled,
+  position = 'single',
+  children,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -61,59 +90,58 @@ export function Row({
   onPress?: () => void;
   onLongPress?: () => void;
   chevron?: boolean;
-  destructive?: boolean;
-  tint?: boolean;
+  tone?: 'default' | 'primary' | 'error';
   disabled?: boolean;
+  position?: Position;
+  children?: ReactNode;
 }) {
   const t = useTheme();
-  const color = destructive ? t.danger : tint ? t.accent : t.text;
+  const color = tone === 'error' ? t.colors.error : tone === 'primary' ? t.colors.primary : t.colors.onSurface;
   return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={disabled || (!onPress && !onLongPress)}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: t.fill }, disabled && { opacity: 0.4 }]}
-    >
-      {left && <View style={styles.left}>{left}</View>}
-      <View style={styles.body}>
-        {typeof title === 'string' ? (
-          <Text style={[styles.title, { color }]} numberOfLines={1}>
-            {title}
-          </Text>
-        ) : (
-          title
-        )}
-        {subtitle != null &&
-          (typeof subtitle === 'string' ? (
-            <Text style={[styles.subtitle, { color: t.secondary }]} numberOfLines={2}>
-              {subtitle}
+    <View style={[corners(position), { overflow: 'hidden', backgroundColor: t.colors.surfaceContainerLow }]}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        disabled={disabled || (!onPress && !onLongPress)}
+        android_ripple={{ color: hexAlpha(t.colors.onSurface, 0.12) }}
+        style={({ pressed }) => [styles.row, disabled && { opacity: 0.38 }, pressed && process.env.EXPO_OS !== 'android' && { backgroundColor: hexAlpha(t.colors.onSurface, 0.08) }]}
+      >
+        {left && <View style={styles.left}>{left}</View>}
+        <View style={styles.body}>
+          {typeof title === 'string' ? (
+            <Text variant="bodyLarge" style={{ color }} numberOfLines={1}>
+              {title}
             </Text>
           ) : (
-            subtitle
-          ))}
-      </View>
-      {detail != null && (
-        <Text style={[styles.detail, { color: t.secondary }]} numberOfLines={1}>
-          {detail}
-        </Text>
-      )}
-      {right}
-      {chevron && <Icon name="chevron.right" size={13} color={t.tertiary} weight="semibold" />}
-    </Pressable>
+            title
+          )}
+          {subtitle != null &&
+            (typeof subtitle === 'string' ? (
+              <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }} numberOfLines={2}>
+                {subtitle}
+              </Text>
+            ) : (
+              subtitle
+            ))}
+        </View>
+        {detail != null && (
+          <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, maxWidth: '45%' }} numberOfLines={1}>
+            {detail}
+          </Text>
+        )}
+        {right}
+        {chevron && <Icon name="chevron-right" size={22} color={t.colors.onSurfaceVariant} />}
+      </Pressable>
+      {children}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { marginHorizontal: space.lg, marginBottom: space.xl },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.xs, marginBottom: space.sm },
-  header: { fontSize: 20, fontWeight: '700', letterSpacing: 0.2 },
-  card: { borderRadius: radius.lg, borderCurve: 'continuous', overflow: 'hidden' },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: 68 },
-  footer: { fontSize: 13, marginTop: space.sm, paddingHorizontal: space.lg, lineHeight: 18 },
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: space.lg, paddingVertical: 10, gap: space.md },
-  left: { width: 40, alignItems: 'center' },
+  group: { marginHorizontal: space.lg, marginBottom: space.xl },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.xs, marginBottom: space.sm, minHeight: 24 },
+  footer: { marginTop: space.sm, paddingHorizontal: space.lg },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingHorizontal: space.lg, paddingVertical: space.md, gap: space.lg },
+  left: { minWidth: 40, alignItems: 'center' },
   body: { flex: 1, gap: 2 },
-  title: { fontSize: 17 },
-  subtitle: { fontSize: 14 },
-  detail: { fontSize: 17, maxWidth: '50%' },
 });
