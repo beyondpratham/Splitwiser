@@ -67,7 +67,8 @@
     "test:local": "node scripts/test-local-backend.mjs",
     "ui:check": "node scripts/ui-check.mjs",
     "local": "node scripts/local.mjs",
-    "local:android": "bash scripts/emulator.sh"
+    "local:android": "bash scripts/emulator.sh",
+    "test:remote": "node scripts/smoke-remote.mjs"
   },
   "private": true
 }
