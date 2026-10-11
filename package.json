@@ -38,8 +38,10 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
+    "playwright": "^1.64.0",
     "supabase": "^2.120.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "ws": "^8.22.0"
   },
   "scripts": {
     "start": "expo start",
@@ -59,7 +61,13 @@
     "submit:ios": "npx eas-cli@latest submit --platform ios",
     "theme": "node scripts/generate-theme.mjs",
     "android:setup": "bash scripts/setup-android.sh",
-    "android:apk": "bash scripts/build-apk.sh"
+    "android:apk": "bash scripts/build-apk.sh",
+    "local:backend": "node scripts/local-backend.mjs",
+    "local:reset": "node scripts/local-backend.mjs --reset",
+    "test:local": "node scripts/test-local-backend.mjs",
+    "ui:check": "node scripts/ui-check.mjs",
+    "local": "node scripts/local.mjs",
+    "local:android": "bash scripts/emulator.sh"
   },
   "private": true
 }
