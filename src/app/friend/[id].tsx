@@ -1,10 +1,13 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { Avatar } from '@/components/Avatar';
 import { ExpenseList } from '@/components/ExpenseList';
-import { Row, Section } from '@/components/List';
-import { Button, EmptyState, FloatingButton, Loading, Screen } from '@/components/ui';
+import { ListGroup, ListItem } from '@/components/List';
+import { Page } from '@/components/Page';
+import { EmptyState, Loading } from '@/components/ui';
 import { useFriendExpenses, useGroups, useMe, useMyBalances, usePeople } from '@/lib/api';
 import { entries, summarizeBalances } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
@@ -24,86 +27,100 @@ export default function FriendScreen() {
   const perGroup = summary.byFriendGroup.get(id);
   const groupNames = useMemo(() => new Map((groupsData ?? []).map((g) => [g.id, g.name])), [groupsData]);
 
-  if (!friend) return isLoading ? <Loading /> : <EmptyState icon="person.fill" title="Friend not found" />;
+  if (!friend) return isLoading ? <Loading /> : <EmptyState icon="account" title="Friend not found" />;
+  const first = friend.name.split(' ')[0];
 
   return (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: friend.name }} />
-      <Screen refreshControl={<RefreshControl refreshing={expenses.isRefetching} onRefresh={() => { expenses.refetch(); balances.refetch(); }} />}>
-        <View style={styles.hero}>
-          <Avatar name={friend.name} color={friend.avatar_color} size={80} />
-          <Text style={[styles.name, { color: t.text }]}>{friend.name}</Text>
-          <Text style={{ color: t.secondary, fontSize: 14 }}>
-            {friend.email}
-            {!friend.user_id && ' · hasn’t joined yet'}
-          </Text>
-          <View style={{ marginTop: space.md, alignItems: 'center', gap: 2 }}>
-            {total.length === 0 ? (
-              <Text style={[styles.balance, { color: t.secondary }]}>You are settled up</Text>
-            ) : (
-              total.map(([c, v]) => (
-                <Text key={c} style={[styles.balance, { color: v > 0 ? t.owed : t.owe }]}>
-                  {v > 0 ? `${friend.name.split(' ')[0]} owes you ` : `You owe ${friend.name.split(' ')[0]} `}
-                  <Text style={{ fontWeight: '700' }}>{formatMoney(Math.abs(v), c)}</Text>
+    <Page
+      title={friend.name}
+      variant="hero"
+      back
+      fab={{ label: 'Add expense', icon: 'plus', onPress: () => router.push({ pathname: '/add-expense', params: { friendId: id } }) }}
+      refreshing={expenses.isRefetching}
+      onRefresh={() => {
+        expenses.refetch();
+        balances.refetch();
+      }}
+    >
+      <View style={styles.hero}>
+        <Animated.View entering={ZoomIn.springify().damping(12)}>
+          <Avatar name={friend.name} color={friend.avatar_color} size={88} />
+        </Animated.View>
+        <Text variant="headlineMedium" style={{ color: t.colors.onSurface, marginTop: space.md }}>
+          {friend.name}
+        </Text>
+        <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }}>
+          {friend.email}
+          {!friend.user_id && ' · hasn’t joined yet'}
+        </Text>
+        <Animated.View entering={FadeInDown.delay(80).springify()} style={{ marginTop: space.md, alignItems: 'center', gap: 2 }}>
+          {total.length === 0 ? (
+            <Text variant="titleMedium" style={{ color: t.colors.onSurfaceVariant }}>
+              You are settled up
+            </Text>
+          ) : (
+            total.map(([c, v]) => (
+              <Text key={c} variant="titleMedium" style={{ color: v > 0 ? t.colors.owed : t.colors.owe }}>
+                {v > 0 ? `${first} owes you ` : `You owe ${first} `}
+                <Text style={{ fontWeight: '700' }}>{formatMoney(Math.abs(v), c)}</Text>
+              </Text>
+            ))
+          )}
+        </Animated.View>
+      </View>
+
+      <View style={styles.actions}>
+        <Button
+          mode="contained"
+          icon="cash-fast"
+          disabled={total.length === 0}
+          style={{ flex: 1 }}
+          contentStyle={{ height: 48 }}
+          onPress={() => {
+            const [c, v] = total[0];
+            router.push({
+              pathname: '/settle-up',
+              params: { from: v > 0 ? id : me!.id, to: v > 0 ? me!.id : id, amount: String(Math.abs(v)), currency: c },
+            });
+          }}
+        >
+          Settle up
+        </Button>
+      </View>
+
+      {perGroup && perGroup.size > 1 && (
+        <ListGroup title="Breakdown" animateIndex={1}>
+          {[...perGroup.entries()].map(([gid, map]) => (
+            <ListItem
+              key={gid ?? 'none'}
+              title={gid ? groupNames.get(gid) ?? 'Group' : 'Non-group expenses'}
+              subtitle={
+                <Text variant="bodyMedium">
+                  {entries(map).map(([c, v]) => (
+                    <Text key={c} style={{ color: v > 0 ? t.colors.owed : t.colors.owe }}>
+                      {v > 0 ? 'owes you ' : 'you owe '}
+                      {formatMoney(Math.abs(v), c)}{' '}
+                    </Text>
+                  ))}
                 </Text>
-              ))
-            )}
-          </View>
-        </View>
+              }
+              chevron={!!gid}
+              onPress={gid ? () => router.push({ pathname: '/group/[id]', params: { id: gid } }) : undefined}
+            />
+          ))}
+        </ListGroup>
+      )}
 
-        <View style={styles.actions}>
-          <Button
-            title="Settle up"
-            icon="banknote.fill"
-            disabled={total.length === 0}
-            style={{ flex: 1 }}
-            onPress={() => {
-              const [c, v] = total[0];
-              router.push({
-                pathname: '/settle-up',
-                params: { from: v > 0 ? id : me!.id, to: v > 0 ? me!.id : id, amount: String(Math.abs(v)), currency: c },
-              });
-            }}
-          />
-        </View>
-
-        {perGroup && perGroup.size > 1 && (
-          <Section title="Breakdown">
-            {[...perGroup.entries()].map(([gid, map]) => (
-              <Row
-                key={gid ?? 'none'}
-                title={gid ? groupNames.get(gid) ?? 'Group' : 'Non-group expenses'}
-                subtitle={
-                  <Text style={{ fontSize: 14 }}>
-                    {entries(map).map(([c, v]) => (
-                      <Text key={c} style={{ color: v > 0 ? t.owed : t.owe }}>
-                        {v > 0 ? 'owes you ' : 'you owe '}
-                        {formatMoney(Math.abs(v), c)}{' '}
-                      </Text>
-                    ))}
-                  </Text>
-                }
-                chevron={!!gid}
-                onPress={gid ? () => router.push({ pathname: '/group/[id]', params: { id: gid } }) : undefined}
-              />
-            ))}
-          </Section>
-        )}
-
-        {expenses.data && expenses.data.length === 0 ? (
-          <EmptyState icon="sparkles" title="No shared expenses" message={`Add an expense with ${friend.name.split(' ')[0]} to get started.`} />
-        ) : (
-          <ExpenseList expenses={expenses.data ?? []} people={byId} meId={me?.id} groupNames={groupNames} />
-        )}
-      </Screen>
-      <FloatingButton title="Add expense" onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })} />
-    </View>
+      {expenses.data && expenses.data.length === 0 ? (
+        <EmptyState icon="creation" title="No shared expenses" message={`Add an expense with ${first} to get started.`} />
+      ) : (
+        <ExpenseList expenses={expenses.data ?? []} people={byId} meId={me?.id} groupNames={groupNames} />
+      )}
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', gap: 4, paddingHorizontal: space.xl, marginBottom: space.xl },
-  name: { fontSize: 26, fontWeight: '700', marginTop: space.md },
-  balance: { fontSize: 17 },
-  actions: { flexDirection: 'row', gap: space.md, paddingHorizontal: space.lg, marginBottom: space.xl },
+  hero: { alignItems: 'center', gap: 2, paddingHorizontal: space.xl, marginBottom: space.xl },
+  actions: { flexDirection: 'row', paddingHorizontal: space.lg, marginBottom: space.xl },
 });
