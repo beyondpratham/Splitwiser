@@ -1,19 +1,23 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput as RNTextInput, View } from 'react-native';
+import { Checkbox, Chip, HelperText, RadioButton, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { DatePickerModal } from 'react-native-paper-dates';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Avatar, CategoryTile, EmojiTile } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
-import { Row, Section } from '@/components/List';
+import { ListGroup, ListItem } from '@/components/List';
+import { Page } from '@/components/Page';
 import { CategoryPicker, CurrencyPicker } from '@/components/Pickers';
-import { Check, Field, haptic, HeaderButton, Loading, Screen, Segmented, Sheet } from '@/components/ui';
+import { Sheet } from '@/components/Sheet';
+import { haptic, Loading } from '@/components/ui';
 import { useExpense, useFriends, useGroups, useMe, usePeople, useSaveExpense } from '@/lib/api';
 import { firstName } from '@/lib/balances';
 import { categoryById, guessCategory } from '@/lib/categories';
 import { currencyByCode } from '@/lib/currencies';
 import { computeSplit, currencyDecimals, distribute, formatMoney, fromMinor, parseAmount, toMinor, type SplitType } from '@/lib/money';
 import { friendlyError } from '@/lib/supabase';
-import { radius, space, useTheme } from '@/theme';
+import { hexAlpha, space, useTheme } from '@/theme';
 
 const SPLIT_LABEL: Record<SplitType, string> = { equal: 'equally', exact: 'by amounts', percent: 'by percent', shares: 'by shares' };
 
@@ -127,11 +131,9 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
   const [date, setDate] = useState(initial.date);
   const [notes, setNotes] = useState(initial.notes);
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<null | 'with' | 'payer' | 'split' | 'currency' | 'category'>(null);
-  const [showAndroidDate, setShowAndroidDate] = useState(false);
+  const [sheet, setSheet] = useState<null | 'with' | 'payer' | 'split' | 'currency' | 'category' | 'date'>(null);
 
   const group = groups.find((g) => g.id === groupId);
-
   const cur = currency ?? group?.default_currency ?? me?.default_currency ?? 'USD';
   const amount = parseAmount(amountText) ?? 0;
   const totalMinor = toMinor(amount, cur);
@@ -140,7 +142,6 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
   // ── derived shares ──
   const calc = useMemo(() => {
     const ids = participants;
-    // paid
     let paid: number[];
     let payerError: string | null = null;
     if (payerMode === 'single') {
@@ -151,7 +152,6 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
       const diff = totalMinor - paid.reduce((a, b) => a + b, 0);
       if (diff !== 0) payerError = `Payments are ${formatMoney(Math.abs(fromMinor(diff, cur)), cur)} ${diff > 0 ? 'short' : 'over'}`;
     }
-    // owed
     let owed: number[];
     let splitError: string | null = null;
     if (splitType === 'equal') {
@@ -172,18 +172,25 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
             : r.error;
       }
     }
-    return { paid, owed, payerError, splitError, remainingMinor: splitType === 'exact' ? totalMinor - owed.reduce((a, b) => a + b, 0) : 0 };
+    return { paid, owed, payerError, splitError };
   }, [participants, payerMode, payerId, paidText, splitType, included, splitText, totalMinor, cur, me?.id]);
 
   const withLabel = group
     ? group.name
-    : participants.filter((id) => id !== me?.id).map((id) => byId.get(id)?.name.split(' ')[0] ?? '…').join(', ');
-
+    : participants
+        .filter((id) => id !== me?.id)
+        .map((id) => byId.get(id)?.name.split(' ')[0] ?? '…')
+        .join(', ');
   const payerLabel =
-    payerMode === 'multiple' ? `${participants.filter((_, i) => calc.paid[i] > 0).length || 'multiple'} people` : payerId === me?.id ? 'you' : firstName(byId.get(payerId ?? ''));
+    payerMode === 'multiple'
+      ? `${participants.filter((_, i) => calc.paid[i] > 0).length || 'multiple'} people`
+      : payerId === me?.id
+        ? 'you'
+        : firstName(byId.get(payerId ?? ''));
 
-  const canSave =
-    description.trim().length > 0 && totalMinor > 0 && participants.length >= 2 && !calc.payerError && !calc.splitError && !save.isPending;
+  const canSave = description.trim().length > 0 && totalMinor > 0 && participants.length >= 2 && !calc.payerError && !calc.splitError && !save.isPending;
+  const missing =
+    participants.length < 2 ? 'Choose who you’re splitting with' : !description.trim() || totalMinor <= 0 ? null : calc.payerError ?? calc.splitError;
 
   async function onSave() {
     setError(null);
@@ -213,120 +220,118 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
     }
   }
 
-  const missing =
-    participants.length < 2 ? 'Choose who you’re splitting with' : !description.trim() ? null : totalMinor <= 0 ? null : calc.payerError ?? calc.splitError;
+  const name = (id: string) => (id === me?.id ? 'You' : byId.get(id)?.name ?? '…');
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Stack.Screen
-        options={{
-          title: params.expenseId ? 'Edit expense' : 'Add expense',
-          headerLeft: () => <HeaderButton title="Cancel" onPress={() => router.back()} />,
-          headerRight: () => <HeaderButton title="Save" bold onPress={onSave} disabled={!canSave} />,
-        }}
-      />
-      <Screen contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* With */}
-        <Pressable onPress={() => setSheet('with')} style={[styles.withRow, { backgroundColor: t.card }]}>
-          <Text style={{ color: t.secondary, fontSize: 15 }}>With you and</Text>
-          {group && <EmojiTile emoji={group.emoji} size={24} />}
-          <Text style={[styles.withValue, { color: participants.length < 2 ? t.accent : t.text }]} numberOfLines={1}>
-            {participants.length < 2 ? 'Choose people or a group' : withLabel}
-          </Text>
-          <Icon name="chevron.down" size={13} color={t.tertiary} weight="semibold" />
+    <Page
+      title={params.expenseId ? 'Edit expense' : 'Add expense'}
+      variant="dialog"
+      form
+      confirm={{ label: 'Save', onPress: onSave, disabled: !canSave, loading: save.isPending }}
+    >
+      {/* With */}
+      <View style={[styles.withCard, { backgroundColor: t.colors.secondaryContainer }]}>
+        <Pressable onPress={() => setSheet('with')} android_ripple={{ color: hexAlpha(t.colors.onSecondaryContainer, 0.12) }} style={styles.withRow}>
+          {group ? <EmojiTile emoji={group.emoji} size={32} /> : <Icon name="account-multiple" size={24} color={t.colors.onSecondaryContainer} />}
+          <View style={{ flex: 1 }}>
+            <Text variant="labelMedium" style={{ color: t.colors.onSecondaryContainer, opacity: 0.8 }}>
+              With you and
+            </Text>
+            <Text variant="titleMedium" numberOfLines={1} style={{ color: t.colors.onSecondaryContainer }}>
+              {participants.length < 2 ? 'Choose people or a group' : withLabel}
+            </Text>
+          </View>
+          <Icon name="chevron-down" color={t.colors.onSecondaryContainer} />
         </Pressable>
+      </View>
 
-        {/* Hero */}
-        <View style={[styles.hero, { backgroundColor: t.card }]}>
-          <View style={styles.descRow}>
-            <Pressable onPress={() => setSheet('category')} hitSlop={6}>
-              <CategoryTile category={category} size={48} />
-            </Pressable>
-            <TextInput
-              value={description}
-              onChangeText={(v) => {
-                setDescription(v);
-                if (!categoryTouched) setCategory(guessCategory(v) ?? 'general');
-              }}
-              placeholder="What was it for?"
-              placeholderTextColor={t.tertiary}
-              selectionColor={t.accent}
-              autoFocus={!params.expenseId}
-              style={[styles.descInput, { color: t.text }]}
-              returnKeyType="next"
-            />
-          </View>
-          <View style={[styles.amountRow, { borderTopColor: t.separator }]}>
-            <Pressable onPress={() => setSheet('currency')} style={[styles.currencyBtn, { backgroundColor: t.fill }]}>
-              <Text style={{ fontSize: 16 }}>{currencyByCode(cur)?.flag ?? '💱'}</Text>
-              <Text style={{ color: t.text, fontWeight: '600', fontSize: 15 }}>{cur}</Text>
-            </Pressable>
-            <TextInput
-              value={amountText}
-              onChangeText={setAmountText}
-              placeholder={decimals ? '0.00' : '0'}
-              placeholderTextColor={t.tertiary}
-              selectionColor={t.accent}
-              keyboardType="decimal-pad"
-              style={[styles.amountInput, { color: t.text }]}
-            />
-          </View>
-          <Text style={{ color: t.secondary, fontSize: 13, paddingHorizontal: space.lg, paddingBottom: space.md }}>
-            {categoryById(category).label}
-            {!categoryTouched && category !== 'general' ? ' · auto' : ''}
-          </Text>
-        </View>
-
-        {/* Paid by / split */}
-        <View style={[styles.sentence, { backgroundColor: t.card }]}>
-          <Text style={[styles.sentenceText, { color: t.secondary }]}>Paid by </Text>
-          <Chip label={payerLabel} onPress={() => setSheet('payer')} />
-          <Text style={[styles.sentenceText, { color: t.secondary }]}> and split </Text>
-          <Chip label={SPLIT_LABEL[splitType]} onPress={() => setSheet('split')} />
-        </View>
-        {totalMinor > 0 && participants.length >= 2 && !calc.splitError && (
-          <Text style={[styles.perPerson, { color: t.secondary }]}>
-            {splitType === 'equal'
-              ? `${formatMoney(fromMinor(Math.max(...calc.owed), cur), cur)} per person`
-              : participants.map((id, i) => `${firstName(byId.get(id), me?.id)} ${formatMoney(fromMinor(calc.owed[i], cur), cur)}`).join(' · ')}
-          </Text>
-        )}
-
-        <Section style={{ marginTop: space.lg }}>
-          <Row
-            left={<Icon name="calendar" size={20} color={t.accent} />}
-            title="Date"
-            right={
-              Platform.OS === 'ios' ? (
-                <DateTimePicker value={date} mode="date" display="compact" maximumDate={new Date(2100, 0)} onChange={(_, d) => d && setDate(d)} accentColor={t.accent} />
-              ) : (
-                <Text style={{ color: t.secondary, fontSize: 17 }}>{date.toLocaleDateString()}</Text>
-              )
-            }
-            onPress={Platform.OS === 'ios' ? undefined : () => setShowAndroidDate(true)}
+      {/* Hero */}
+      <View style={[styles.hero, { backgroundColor: t.colors.surfaceContainerLow }]}>
+        <View style={styles.descRow}>
+          <Pressable onPress={() => setSheet('category')} hitSlop={6} accessibilityLabel="Choose category">
+            <CategoryTile category={category} size={52} />
+          </Pressable>
+          <RNTextInput
+            value={description}
+            onChangeText={(v) => {
+              setDescription(v);
+              if (!categoryTouched) setCategory(guessCategory(v) ?? 'general');
+            }}
+            placeholder="What was it for?"
+            placeholderTextColor={t.colors.outline}
+            selectionColor={t.colors.primary}
+            cursorColor={t.colors.primary}
+            autoFocus={!params.expenseId}
+            style={[styles.descInput, { color: t.colors.onSurface }]}
           />
-          <View style={styles.notesRow}>
-            <Icon name="note.text" size={20} color={t.accent} />
-            <Field value={notes} onChangeText={setNotes} placeholder="Notes" multiline style={{ flex: 1, paddingHorizontal: 0 }} />
-          </View>
-        </Section>
+        </View>
+        <View style={[styles.amountRow, { borderTopColor: t.colors.outlineVariant }]}>
+          <Chip onPress={() => setSheet('currency')} icon={() => <Text>{currencyByCode(cur)?.flag ?? '💱'}</Text>} compact>
+            {cur}
+          </Chip>
+          <RNTextInput
+            value={amountText}
+            onChangeText={setAmountText}
+            placeholder={decimals ? '0.00' : '0'}
+            placeholderTextColor={t.colors.outline}
+            selectionColor={t.colors.primary}
+            cursorColor={t.colors.primary}
+            keyboardType="decimal-pad"
+            style={[styles.amountInput, { color: t.colors.onSurface }]}
+          />
+        </View>
+        <Text variant="labelMedium" style={[styles.categoryHint, { color: t.colors.onSurfaceVariant }]}>
+          {categoryById(category).label}
+          {!categoryTouched && category !== 'general' ? ' · picked automatically' : ''}
+        </Text>
+      </View>
 
-        {(error || missing) && (
-          <Text style={[styles.error, { color: error ? t.danger : t.owe }]}>{error ?? missing}</Text>
-        )}
-      </Screen>
-
-      {showAndroidDate && (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          onChange={(_, d) => {
-            setShowAndroidDate(false);
-            if (d) setDate(d);
-          }}
-        />
+      {/* Paid by / split */}
+      <View style={styles.sentence}>
+        <Text variant="bodyLarge" style={{ color: t.colors.onSurfaceVariant }}>
+          Paid by
+        </Text>
+        <Chip mode="flat" selected showSelectedCheck={false} onPress={() => setSheet('payer')} icon="account-cash">
+          {payerLabel}
+        </Chip>
+        <Text variant="bodyLarge" style={{ color: t.colors.onSurfaceVariant }}>
+          and split
+        </Text>
+        <Chip mode="flat" selected showSelectedCheck={false} onPress={() => setSheet('split')} icon="call-split">
+          {SPLIT_LABEL[splitType]}
+        </Chip>
+      </View>
+      {totalMinor > 0 && participants.length >= 2 && !calc.splitError && (
+        <Animated.Text entering={FadeIn} style={[styles.perPerson, { color: t.colors.onSurfaceVariant }]}>
+          {splitType === 'equal'
+            ? `${formatMoney(fromMinor(Math.max(...calc.owed), cur), cur)} per person`
+            : participants.map((id, i) => `${firstName(byId.get(id), me?.id)} ${formatMoney(fromMinor(calc.owed[i], cur), cur)}`).join(' · ')}
+        </Animated.Text>
       )}
 
+      <View style={styles.extra}>
+        <Chip icon="calendar" onPress={() => setSheet('date')} style={{ alignSelf: 'flex-start' }}>
+          {date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+        </Chip>
+        <TextInput mode="outlined" label="Notes" value={notes} onChangeText={setNotes} multiline left={<TextInput.Icon icon="note-text-outline" />} />
+        {(error || missing) && (
+          <HelperText type={error ? 'error' : 'info'} visible style={!error ? { color: t.colors.owe } : undefined}>
+            {error ?? missing}
+          </HelperText>
+        )}
+      </View>
+
+      <DatePickerModal
+        locale="en"
+        mode="single"
+        visible={sheet === 'date'}
+        date={date}
+        onDismiss={() => setSheet(null)}
+        onConfirm={({ date: d }) => {
+          setSheet(null);
+          if (d) setDate(d);
+        }}
+      />
       <CurrencyPicker visible={sheet === 'currency'} value={cur} onClose={() => setSheet(null)} onSelect={setCurrency} />
       <CategoryPicker
         visible={sheet === 'category'}
@@ -339,261 +344,189 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
       />
 
       {/* With whom */}
-      <Sheet visible={sheet === 'with'} title="Split with" onClose={() => setSheet(null)}>
+      <Sheet visible={sheet === 'with'} title="Split with" onClose={() => setSheet(null)} action={{ label: 'Done', onPress: () => setSheet(null) }}>
         {groups.length > 0 && (
-          <Section title="Groups">
+          <ListGroup title="Groups">
             {groups.map((g) => (
-              <Row
+              <ListItem
                 key={g.id}
-                left={<EmojiTile emoji={g.emoji} size={36} />}
+                left={<EmojiTile emoji={g.emoji} size={40} />}
                 title={g.name}
                 subtitle={`${g.group_members.length} people`}
-                right={<Check on={groupId === g.id} />}
+                right={<RadioButton.Android value={g.id} status={groupId === g.id ? 'checked' : 'unchecked'} onPress={() => {}} />}
                 onPress={() => {
                   haptic.tap();
                   setGroupId(g.id);
                   setParticipants(g.group_members.map((m) => m.profile_id));
                   if (!currency) setCurrency(g.default_currency);
-                  setSheet(null);
                 }}
               />
             ))}
-          </Section>
+          </ListGroup>
         )}
-        <Section title="Friends" footer={friends.length === 0 ? 'Add friends from the Friends tab first.' : 'Pick one or more friends for an expense outside any group.'}>
+        <ListGroup title="Friends" footer={friends.length === 0 ? 'Add friends from the Friends tab first.' : 'Pick one or more friends for an expense outside any group.'}>
           {friends.map((f) => {
             const on = !groupId && participants.includes(f.id);
+            const toggle = () => {
+              haptic.tap();
+              const base = groupId ? [me!.id] : participants;
+              setGroupId(null);
+              setParticipants(on ? base.filter((x) => x !== f.id) : [...base, f.id]);
+            };
             return (
-              <Row
+              <ListItem
                 key={f.id}
-                left={<Avatar name={f.name} color={f.avatar_color} size={36} />}
+                left={<Avatar name={f.name} color={f.avatar_color} />}
                 title={f.name}
                 subtitle={f.email ?? undefined}
-                right={<Check on={on} />}
-                onPress={() => {
-                  haptic.tap();
-                  const base = groupId ? [me!.id] : participants;
-                  setGroupId(null);
-                  setParticipants(on ? base.filter((x) => x !== f.id) : [...base, f.id]);
-                }}
+                right={<Checkbox.Android status={on ? 'checked' : 'unchecked'} onPress={toggle} />}
+                onPress={toggle}
               />
             );
           })}
-        </Section>
+        </ListGroup>
       </Sheet>
 
       {/* Payer */}
-      <Sheet visible={sheet === 'payer'} title="Who paid?" onClose={() => setSheet(null)}>
-        <View style={{ paddingHorizontal: space.lg, marginBottom: space.lg }}>
-          <Segmented
-            options={[
-              { value: 'single', label: 'One person' },
-              { value: 'multiple', label: 'Multiple people' },
-            ]}
+      <Sheet visible={sheet === 'payer'} title="Who paid?" onClose={() => setSheet(null)} action={{ label: 'Done', onPress: () => setSheet(null), disabled: !!calc.payerError }}>
+        <View style={styles.sheetControls}>
+          <SegmentedButtons
             value={payerMode}
-            onChange={setPayerMode}
+            onValueChange={(v) => setPayerMode(v as 'single' | 'multiple')}
+            buttons={[
+              { value: 'single', label: 'One person', icon: 'account' },
+              { value: 'multiple', label: 'Several', icon: 'account-multiple' },
+            ]}
           />
         </View>
-        <Section
-          footer={
-            payerMode === 'multiple'
-              ? calc.payerError ?? `Adds up to ${formatMoney(fromMinor(totalMinor, cur), cur)} ✓`
-              : undefined
-          }
-        >
-          {participants.map((id) => {
-            const p = byId.get(id);
-            return (
-              <Row
-                key={id}
-                left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} size={36} />}
-                title={id === me?.id ? 'You' : p?.name ?? '…'}
-                right={
-                  payerMode === 'single' ? (
-                    <Check on={payerId === id} />
-                  ) : (
-                    <MoneyInput value={paidText[id] ?? ''} onChange={(v) => setPaidText({ ...paidText, [id]: v })} currency={cur} />
-                  )
-                }
-                onPress={
-                  payerMode === 'single'
-                    ? () => {
-                        haptic.tap();
-                        setPayerId(id);
-                        setSheet(null);
-                      }
-                    : undefined
-                }
-              />
-            );
-          })}
-        </Section>
+        <Animated.View layout={LinearTransition.springify()}>
+          <ListGroup footer={payerMode === 'multiple' ? calc.payerError ?? `Adds up to ${formatMoney(fromMinor(totalMinor, cur), cur)} ✓` : undefined}>
+            {participants.map((id) => {
+              const p = byId.get(id);
+              return (
+                <ListItem
+                  key={id}
+                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+                  title={name(id)}
+                  right={
+                    payerMode === 'single' ? (
+                      <RadioButton.Android value={id} status={payerId === id ? 'checked' : 'unchecked'} onPress={() => setPayerId(id)} />
+                    ) : (
+                      <AmountInput value={paidText[id] ?? ''} onChange={(v) => setPaidText({ ...paidText, [id]: v })} suffix={cur} />
+                    )
+                  }
+                  onPress={
+                    payerMode === 'single'
+                      ? () => {
+                          haptic.tap();
+                          setPayerId(id);
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </ListGroup>
+        </Animated.View>
       </Sheet>
 
       {/* Split */}
-      <Sheet visible={sheet === 'split'} title="Split options" onClose={() => setSheet(null)}>
-        <View style={{ paddingHorizontal: space.lg, marginBottom: space.lg }}>
-          <Segmented
-            options={[
-              { value: 'equal', label: 'Equal', icon: 'equal' },
-              { value: 'exact', label: 'Exact', icon: 'number' },
-              { value: 'percent', label: '%', icon: 'percent' },
-              { value: 'shares', label: 'Shares', icon: 'list.bullet' },
-            ]}
+      <Sheet visible={sheet === 'split'} title="Split options" onClose={() => setSheet(null)} action={{ label: 'Done', onPress: () => setSheet(null), disabled: !!calc.splitError }}>
+        <View style={styles.sheetControls}>
+          <SegmentedButtons
             value={splitType}
-            onChange={(v) => {
-              setSplitType(v);
+            onValueChange={(v) => {
+              setSplitType(v as SplitType);
               setSplitText({});
             }}
+            buttons={[
+              { value: 'equal', label: 'Equal' },
+              { value: 'exact', label: 'Exact' },
+              { value: 'percent', label: '%' },
+              { value: 'shares', label: 'Shares' },
+            ]}
           />
         </View>
-        <Section
-          footer={
-            calc.splitError ??
-            (totalMinor > 0 ? `Total ${formatMoney(fromMinor(totalMinor, cur), cur)} ✓` : 'Enter an amount to see each share.')
-          }
-        >
-          {participants.map((id, i) => {
-            const p = byId.get(id);
-            const share = formatMoney(fromMinor(calc.owed[i] ?? 0, cur), cur);
-            return (
-              <Row
-                key={id}
-                left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} size={36} />}
-                title={id === me?.id ? 'You' : p?.name ?? '…'}
-                subtitle={splitType === 'equal' || splitType === 'exact' ? undefined : share}
-                right={
-                  splitType === 'equal' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                      <Text style={{ color: t.secondary, fontVariant: ['tabular-nums'] }}>{included[id] === false ? '' : share}</Text>
-                      <Check on={included[id] !== false} />
-                    </View>
-                  ) : splitType === 'exact' ? (
-                    <MoneyInput value={splitText[id] ?? ''} onChange={(v) => setSplitText({ ...splitText, [id]: v })} currency={cur} />
-                  ) : (
-                    <UnitInput
-                      value={splitText[id] ?? ''}
-                      onChange={(v) => setSplitText({ ...splitText, [id]: v })}
-                      unit={splitType === 'percent' ? '%' : 'shares'}
-                    />
-                  )
-                }
-                onPress={
-                  splitType === 'equal'
-                    ? () => {
-                        haptic.tap();
-                        setIncluded({ ...included, [id]: included[id] === false });
-                      }
-                    : undefined
-                }
-              />
-            );
-          })}
-        </Section>
+        <Animated.View layout={LinearTransition.springify()}>
+          <ListGroup footer={calc.splitError ?? (totalMinor > 0 ? `Total ${formatMoney(fromMinor(totalMinor, cur), cur)} ✓` : 'Enter an amount to see each share.')}>
+            {participants.map((id, i) => {
+              const p = byId.get(id);
+              const share = formatMoney(fromMinor(calc.owed[i] ?? 0, cur), cur);
+              const toggle = () => {
+                haptic.tap();
+                setIncluded({ ...included, [id]: included[id] === false });
+              };
+              return (
+                <ListItem
+                  key={id}
+                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+                  title={name(id)}
+                  subtitle={splitType === 'percent' || splitType === 'shares' ? share : undefined}
+                  right={
+                    splitType === 'equal' ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                        <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}>
+                          {included[id] === false ? '' : share}
+                        </Text>
+                        <Checkbox.Android status={included[id] === false ? 'unchecked' : 'checked'} onPress={toggle} />
+                      </View>
+                    ) : (
+                      <AmountInput
+                        value={splitText[id] ?? ''}
+                        onChange={(v) => setSplitText({ ...splitText, [id]: v })}
+                        suffix={splitType === 'exact' ? cur : splitType === 'percent' ? '%' : '×'}
+                      />
+                    )
+                  }
+                  onPress={splitType === 'equal' ? toggle : undefined}
+                />
+              );
+            })}
+          </ListGroup>
+        </Animated.View>
         {splitType === 'percent' && (
-          <Pressable
+          <Chip
+            icon="equal"
             style={{ alignSelf: 'center' }}
             onPress={() => {
               const parts = distribute(10000, participants.map(() => 1));
               setSplitText(Object.fromEntries(participants.map((id, i) => [id, String(parts[i] / 100)])));
             }}
           >
-            <Text style={{ color: t.accent, fontSize: 15, fontWeight: '500' }}>Split evenly</Text>
-          </Pressable>
+            Split evenly
+          </Chip>
         )}
       </Sheet>
-    </KeyboardAvoidingView>
+    </Page>
   );
 }
 
-function Chip({ label, onPress }: { label: string; onPress: () => void }) {
-  const t = useTheme();
+function AmountInput({ value, onChange, suffix }: { value: string; onChange: (v: string) => void; suffix: string }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.chip, { backgroundColor: t.accentSoft, opacity: pressed ? 0.6 : 1 }]}>
-      <Text style={{ color: t.accent, fontWeight: '600', fontSize: 16 }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function MoneyInput({ value, onChange, currency }: { value: string; onChange: (v: string) => void; currency: string }) {
-  const t = useTheme();
-  return (
-    <View style={[styles.inlineInput, { backgroundColor: t.fill }]}>
-      <Text style={{ color: t.secondary, fontSize: 13 }}>{currency}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={t.tertiary}
-        selectionColor={t.accent}
-        style={[styles.inlineField, { color: t.text }]}
-      />
-    </View>
-  );
-}
-
-function UnitInput({ value, onChange, unit }: { value: string; onChange: (v: string) => void; unit: string }) {
-  const t = useTheme();
-  return (
-    <View style={[styles.inlineInput, { backgroundColor: t.fill }]}>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={t.tertiary}
-        selectionColor={t.accent}
-        style={[styles.inlineField, { color: t.text }]}
-      />
-      <Text style={{ color: t.secondary, fontSize: 13 }}>{unit}</Text>
-    </View>
+    <TextInput
+      mode="outlined"
+      dense
+      value={value}
+      onChangeText={onChange}
+      keyboardType="decimal-pad"
+      placeholder="0"
+      right={<TextInput.Affix text={suffix} />}
+      style={{ width: 128, textAlign: 'right' }}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  withRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    marginHorizontal: space.lg,
-    paddingHorizontal: space.lg,
-    height: 52,
-    borderRadius: radius.lg,
-    borderCurve: 'continuous',
-    marginBottom: space.md,
-  },
-  withValue: { flex: 1, fontSize: 16, fontWeight: '600' },
-  hero: { marginHorizontal: space.lg, borderRadius: radius.lg, borderCurve: 'continuous', overflow: 'hidden' },
+  withCard: { marginHorizontal: space.lg, borderRadius: 20, overflow: 'hidden', marginBottom: space.md },
+  withRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
+  hero: { marginHorizontal: space.lg, borderRadius: 28, overflow: 'hidden' },
   descRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
-  descInput: { flex: 1, fontSize: 20, fontWeight: '500', paddingVertical: 6 },
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  currencyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 40, borderRadius: 20 },
-  amountInput: { flex: 1, fontSize: 44, fontWeight: '700', letterSpacing: -1, paddingVertical: space.sm, fontVariant: ['tabular-nums'] },
-  sentence: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    rowGap: space.sm,
-    marginHorizontal: space.lg,
-    marginTop: space.md,
-    padding: space.lg,
-    borderRadius: radius.lg,
-    borderCurve: 'continuous',
-  },
-  sentenceText: { fontSize: 16 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-  perPerson: { textAlign: 'center', fontSize: 13, marginTop: space.sm, paddingHorizontal: space.xl },
-  notesRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingLeft: space.lg + 10, paddingRight: space.lg },
-  error: { textAlign: 'center', fontSize: 14, fontWeight: '500', paddingHorizontal: space.xl },
-  inlineInput: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 10, height: 36, minWidth: 110 },
-  inlineField: { flex: 1, fontSize: 16, textAlign: 'right', paddingVertical: 0, fontVariant: ['tabular-nums'] },
+  descInput: { flex: 1, fontSize: 22, paddingVertical: 6 },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.sm, borderTopWidth: StyleSheet.hairlineWidth },
+  amountInput: { flex: 1, fontSize: 48, fontWeight: '500', letterSpacing: -1, paddingVertical: space.sm, fontVariant: ['tabular-nums'] },
+  categoryHint: { paddingHorizontal: space.lg, paddingBottom: space.lg },
+  sentence: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: space.sm, marginTop: space.xl, paddingHorizontal: space.lg },
+  perPerson: { textAlign: 'center', fontSize: 13, marginTop: space.md, paddingHorizontal: space.xl },
+  extra: { paddingHorizontal: space.lg, gap: space.md, marginTop: space.xl },
+  sheetControls: { paddingHorizontal: space.lg, marginBottom: space.lg },
 });
