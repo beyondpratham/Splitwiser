@@ -1,20 +1,17 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from 'react-native-paper';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { firstName, myImpact, payersLabel } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
 import type { Expense, Profile } from '@/lib/types';
-import { radius, space, useTheme } from '@/theme';
+import { hexAlpha, space, useTheme } from '@/theme';
 import { CategoryTile } from './Avatar';
-
-function monthKey(d: string) {
-  return d.slice(0, 7);
-}
 
 function monthLabel(key: string) {
   const [y, m] = key.split('-').map(Number);
-  const date = new Date(y, m - 1, 1);
   const thisYear = new Date().getFullYear() === y;
-  return date.toLocaleDateString(undefined, { month: 'long', year: thisYear ? undefined : 'numeric' });
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: thisYear ? undefined : 'numeric' });
 }
 
 export function ExpenseList({
@@ -32,19 +29,31 @@ export function ExpenseList({
   const t = useTheme();
   const months: [string, Expense[]][] = [];
   for (const e of expenses) {
-    const k = monthKey(e.spent_on);
+    const k = e.spent_on.slice(0, 7);
     if (months.at(-1)?.[0] !== k) months.push([k, []]);
     months.at(-1)![1].push(e);
   }
 
+  let n = 0;
   return (
     <>
       {months.map(([k, list]) => (
         <View key={k} style={styles.month}>
-          <Text style={[styles.monthLabel, { color: t.text }]}>{monthLabel(k)}</Text>
-          <View style={[styles.card, { backgroundColor: t.card }]}>
+          <Text variant="titleSmall" style={[styles.monthLabel, { color: t.colors.primary }]}>
+            {monthLabel(k)}
+          </Text>
+          <View style={{ gap: 2 }}>
             {list.map((e, i) => (
-              <ExpenseRow key={e.id} e={e} people={people} meId={meId} last={i === list.length - 1} groupName={e.group_id ? groupNames?.get(e.group_id) : groupNames ? 'Non-group' : undefined} />
+              <ExpenseRow
+                key={e.id}
+                e={e}
+                people={people}
+                meId={meId}
+                index={n++}
+                first={i === 0}
+                last={i === list.length - 1}
+                groupName={e.group_id ? groupNames?.get(e.group_id) : groupNames ? 'Non-group' : undefined}
+              />
             ))}
           </View>
         </View>
@@ -53,7 +62,23 @@ export function ExpenseList({
   );
 }
 
-function ExpenseRow({ e, people, meId, last, groupName }: { e: Expense; people: Map<string, Profile>; meId?: string; last: boolean; groupName?: string }) {
+function ExpenseRow({
+  e,
+  people,
+  meId,
+  index,
+  first,
+  last,
+  groupName,
+}: {
+  e: Expense;
+  people: Map<string, Profile>;
+  meId?: string;
+  index: number;
+  first: boolean;
+  last: boolean;
+  groupName?: string;
+}) {
   const t = useTheme();
   const impact = myImpact(e, meId);
   const day = new Date(`${e.spent_on}T12:00:00`);
@@ -68,54 +93,70 @@ function ExpenseRow({ e, people, meId, last, groupName }: { e: Expense; people: 
   }
   if (groupName) subtitle += ` · ${groupName}`;
 
+  const color = impact.net > 0 ? t.colors.owed : t.colors.owe;
   const right = e.is_payment ? (
-    <Text style={[styles.paymentAmount, { color: t.secondary }]}>{formatMoney(Number(e.amount), e.currency)}</Text>
+    <Text variant="titleSmall" style={{ color: t.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}>
+      {formatMoney(Number(e.amount), e.currency)}
+    </Text>
   ) : !impact.involved || Math.abs(impact.net) < 0.005 ? (
-    <Text style={{ color: t.tertiary, fontSize: 13 }}>{impact.involved ? 'no balance' : 'not involved'}</Text>
+    <Text variant="labelMedium" style={{ color: t.colors.onSurfaceVariant }}>
+      {impact.involved ? 'no balance' : 'not involved'}
+    </Text>
   ) : (
     <View style={{ alignItems: 'flex-end' }}>
-      <Text style={{ fontSize: 12, color: impact.net > 0 ? t.owed : t.owe }}>{impact.net > 0 ? 'you lent' : 'you borrowed'}</Text>
-      <Text style={{ fontSize: 16, fontWeight: '600', color: impact.net > 0 ? t.owed : t.owe, fontVariant: ['tabular-nums'] }}>
+      <Text variant="labelSmall" style={{ color }}>
+        {impact.net > 0 ? 'you lent' : 'you borrowed'}
+      </Text>
+      <Text variant="titleSmall" style={{ color, fontVariant: ['tabular-nums'] }}>
         {formatMoney(Math.abs(impact.net), e.currency)}
       </Text>
     </View>
   );
 
+  const r = (on: boolean) => (on ? 20 : 4);
   return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/expense/[id]', params: { id: e.id } })}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: t.fill }]}
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index, 10) * 35).springify().damping(18)}
+      style={{
+        overflow: 'hidden',
+        backgroundColor: t.colors.surfaceContainerLow,
+        borderTopLeftRadius: r(first),
+        borderTopRightRadius: r(first),
+        borderBottomLeftRadius: r(last),
+        borderBottomRightRadius: r(last),
+      }}
     >
-      <View style={styles.date}>
-        <Text style={[styles.dateMonth, { color: t.secondary }]}>{day.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</Text>
-        <Text style={[styles.dateDay, { color: t.text }]}>{day.getDate()}</Text>
-      </View>
-      <CategoryTile category={e.category} payment={e.is_payment} size={38} />
-      <View style={[styles.body, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.separator }]}>
+      <Pressable
+        onPress={() => router.push({ pathname: '/expense/[id]', params: { id: e.id } })}
+        android_ripple={{ color: hexAlpha(t.colors.onSurface, 0.12) }}
+        style={styles.row}
+      >
+        <View style={styles.date}>
+          <Text variant="labelSmall" style={{ color: t.colors.onSurfaceVariant }}>
+            {day.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}
+          </Text>
+          <Text variant="titleMedium" style={{ color: t.colors.onSurface, fontVariant: ['tabular-nums'] }}>
+            {day.getDate()}
+          </Text>
+        </View>
+        <CategoryTile category={e.category} payment={e.is_payment} size={40} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[styles.title, { color: t.text }]} numberOfLines={1}>
+          <Text variant="bodyLarge" numberOfLines={1} style={{ color: t.colors.onSurface }}>
             {e.is_payment ? 'Payment' : e.description}
           </Text>
-          <Text style={[styles.subtitle, { color: t.secondary }]} numberOfLines={1}>
+          <Text variant="bodySmall" numberOfLines={1} style={{ color: t.colors.onSurfaceVariant }}>
             {subtitle}
           </Text>
         </View>
         {right}
-      </View>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   month: { marginHorizontal: space.lg, marginBottom: space.xl },
-  monthLabel: { fontSize: 20, fontWeight: '700', marginBottom: space.sm, marginLeft: space.xs },
-  card: { borderRadius: radius.lg, borderCurve: 'continuous', overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingLeft: space.md, gap: space.md },
-  date: { width: 30, alignItems: 'center' },
-  dateMonth: { fontSize: 11, fontWeight: '600' },
-  dateDay: { fontSize: 18, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  body: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.md, paddingRight: space.lg, minHeight: 64 },
-  title: { fontSize: 16, fontWeight: '500' },
-  subtitle: { fontSize: 13 },
-  paymentAmount: { fontSize: 15, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  monthLabel: { marginBottom: space.sm, marginLeft: space.xs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, minHeight: 72 },
+  date: { width: 32, alignItems: 'center' },
 });
