@@ -1,27 +1,85 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const key = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+export interface BackendConfig {
+  url: string;
+  key: string;
+}
 
-export const isConfigured = Boolean(url && key && !url.includes('YOUR-PROJECT'));
+const STORAGE_KEY = 'splitwiser.backend';
 
-export const supabase = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder', {
-  auth: {
-    storage: Platform.OS === 'web' && typeof window === 'undefined' ? undefined : AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
+/** Build-time config from .env, if present. */
+export function envConfig(): BackendConfig | null {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const key = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+  if (!url || !key || url.includes('YOUR-PROJECT')) return null;
+  return { url, key };
+}
+
+function makeClient(config: BackendConfig | null) {
+  return createClient(config?.url ?? 'https://placeholder.supabase.co', config?.key ?? 'placeholder', {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+let current: SupabaseClient = makeClient(envConfig());
+
+/** Always forwards to the active client, so the backend can be configured at runtime. */
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    const value = Reflect.get(current, prop, current);
+    return typeof value === 'function' ? value.bind(current) : value;
   },
 });
+
+/** Stored (runtime) config wins over the build-time one. */
+export async function loadConfig(): Promise<BackendConfig | null> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as BackendConfig;
+  } catch {
+    // fall through to env
+  }
+  return envConfig();
+}
+
+export function activateConfig(config: BackendConfig | null) {
+  current = makeClient(config);
+}
+
+export async function saveConfig(config: BackendConfig | null) {
+  if (config) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  else await AsyncStorage.removeItem(STORAGE_KEY);
+  current = makeClient(config ?? envConfig());
+}
+
+/** Checks the URL / key pair actually reaches a SplitWiser database. */
+export async function testConfig(config: BackendConfig): Promise<string | null> {
+  try {
+    const res = await fetch(`${config.url.replace(/\/$/, '')}/rest/v1/profiles?select=id&limit=1`, {
+      headers: { apikey: config.key, Authorization: `Bearer ${config.key}` },
+    });
+    if (res.status === 401 || res.status === 403) return 'The key was rejected. Use the publishable (anon) key.';
+    if (res.status === 404) return 'Connected, but the database tables are missing. Run the migration first.';
+    if (!res.ok) return `The server answered with ${res.status}.`;
+    return null;
+  } catch {
+    return 'Could not reach that URL. Check it and your connection.';
+  }
+}
 
 // Only refresh tokens while the app is in the foreground.
 if (Platform.OS !== 'web') {
   AppState.addEventListener('change', (state) => {
-    if (state === 'active') supabase.auth.startAutoRefresh();
-    else supabase.auth.stopAutoRefresh();
+    if (state === 'active') current.auth.startAutoRefresh();
+    else current.auth.stopAutoRefresh();
   });
 }
 
