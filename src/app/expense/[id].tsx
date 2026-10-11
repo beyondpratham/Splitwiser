@@ -24,7 +24,7 @@ import {
 } from '@/lib/api';
 import { firstName } from '@/lib/balances';
 import { categoryById } from '@/lib/categories';
-import { formatMoney } from '@/lib/money';
+import { dayToDate, formatMoney } from '@/lib/money';
 import { space, useTheme } from '@/theme';
 
 const SPLIT_TEXT = { equal: 'Split equally', exact: 'Split by exact amounts', percent: 'Split by percentage', shares: 'Split by shares' };
@@ -98,7 +98,7 @@ export default function ExpenseScreen() {
           {formatMoney(Number(e.amount), e.currency)}
         </Text>
         <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
-          {new Date(`${e.spent_on}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+          {dayToDate(e.spent_on).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
           {group ? ` · ${group.name}` : ''}
           {!e.is_payment ? ` · ${categoryById(e.category).label}` : ''}
         </Text>

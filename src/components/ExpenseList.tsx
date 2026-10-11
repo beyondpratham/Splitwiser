@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { firstName, myImpact, payersLabel } from '@/lib/balances';
-import { formatMoney } from '@/lib/money';
+import { dayToDate, formatMoney } from '@/lib/money';
 import type { Expense, Profile } from '@/lib/types';
 import { hexAlpha, space, useTheme } from '@/theme';
 import { CategoryTile } from './Avatar';
@@ -81,7 +81,7 @@ function ExpenseRow({
 }) {
   const t = useTheme();
   const impact = myImpact(e, meId);
-  const day = new Date(`${e.spent_on}T12:00:00`);
+  const day = dayToDate(e.spent_on);
 
   let subtitle: string;
   if (e.is_payment) {

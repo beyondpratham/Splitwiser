@@ -138,3 +138,8 @@ export function simplifyDebts(nets: Record<string, number>): Transfer[] {
   }
   return out;
 }
+
+/** A calendar day ("2026-10-08") as a local Date at noon, so time zones never shift it. */
+export function dayToDate(day: string): Date {
+  return new Date(`${String(day).slice(0, 10)}T12:00:00`);
+}

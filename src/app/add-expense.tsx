@@ -15,7 +15,7 @@ import { useExpense, useFriends, useGroups, useMe, usePeople, useSaveExpense } f
 import { firstName } from '@/lib/balances';
 import { categoryById, guessCategory } from '@/lib/categories';
 import { currencyByCode } from '@/lib/currencies';
-import { computeSplit, currencyDecimals, distribute, formatMoney, fromMinor, parseAmount, toMinor, type SplitType } from '@/lib/money';
+import { computeSplit, currencyDecimals, dayToDate, distribute, formatMoney, fromMinor, parseAmount, toMinor, type SplitType } from '@/lib/money';
 import { friendlyError } from '@/lib/supabase';
 import { hexAlpha, space, useTheme } from '@/theme';
 
@@ -95,7 +95,7 @@ export default function AddExpense() {
           e.split_type === 'exact' ? String(Number(s.owed)) : s.split_value != null ? String(Number(s.split_value)) : '',
         ]),
       ),
-      date: new Date(`${e.spent_on}T12:00:00`),
+      date: dayToDate(e.spent_on),
       notes: e.notes ?? '',
     };
   } else if (params.groupId) {
