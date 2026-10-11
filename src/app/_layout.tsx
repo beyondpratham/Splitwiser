@@ -34,6 +34,7 @@ function RootStack() {
   const dialog = { animation: 'slide_from_bottom' as const, presentation: 'modal' as const };
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'default' }}>
+      <Stack.Screen name="index" options={{ animation: 'none' }} />
       <Stack.Protected guard={!configured}>
         <Stack.Screen name="setup" />
       </Stack.Protected>
