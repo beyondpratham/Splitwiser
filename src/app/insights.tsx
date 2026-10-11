@@ -1,15 +1,19 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { SegmentedButtons, Text } from 'react-native-paper';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { CategoryTile } from '@/components/Avatar';
-import { EmptyState, haptic, Screen, Segmented } from '@/components/ui';
+import { Page } from '@/components/Page';
+import { AnimatedMoney, EmptyState, haptic } from '@/components/ui';
 import { useGroup, useGroupExpenses, useMe, useMyExpenses } from '@/lib/api';
 import { categoryById } from '@/lib/categories';
 import { formatMoney } from '@/lib/money';
 import type { Expense } from '@/lib/types';
-import { radius, space, useTheme } from '@/theme';
+import { motion, space, useTheme } from '@/theme';
 
 type Measure = 'mine' | 'total';
+const CHART_HEIGHT = 150;
 
 function monthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -66,135 +70,166 @@ export default function Insights() {
   const shown = selectedMonth ?? data.months[5]?.[0];
 
   return (
-    <Screen>
-      <Stack.Screen options={{ title: group ? `${group.name} totals` : 'Insights' }} />
+    <Page title={group ? `${group.name} totals` : 'Insights'} back variant="large">
       {expenses.length === 0 ? (
-        <EmptyState icon="chart.bar.fill" title="No spending yet" message="Insights appear once you have a few expenses." />
+        <EmptyState icon="chart-bar" title="No spending yet" message="Insights appear once you have a few expenses." />
       ) : (
         <>
           <View style={styles.controls}>
             {groupId && (
-              <Segmented
-                options={[
-                  { value: 'mine', label: 'My share' },
-                  { value: 'total', label: 'Group spending' },
-                ]}
+              <SegmentedButtons
                 value={measure}
-                onChange={setMeasure}
+                onValueChange={(v) => setMeasure(v as Measure)}
+                buttons={[
+                  { value: 'mine', label: 'My share', icon: 'account' },
+                  { value: 'total', label: 'Group spending', icon: 'account-group' },
+                ]}
               />
             )}
             {currencies.length > 1 && (
-              <Segmented options={currencies.slice(0, 4).map((c) => ({ value: c, label: c }))} value={currency} onChange={setCurrency} />
+              <SegmentedButtons value={currency} onValueChange={setCurrency} buttons={currencies.slice(0, 4).map((c) => ({ value: c, label: c }))} />
             )}
           </View>
 
-          {/* Headline */}
-          <View style={[styles.card, { backgroundColor: t.card }]}>
-            <Text style={[styles.label, { color: t.secondary }]}>
+          <Animated.View entering={FadeInDown.springify().damping(18)} style={[styles.card, { backgroundColor: t.colors.primaryContainer }]}>
+            <Text variant="labelLarge" style={{ color: t.colors.onPrimaryContainer, opacity: 0.8 }}>
               {measure === 'mine' ? 'Your share' : 'Group spending'} · all time
             </Text>
-            <Text style={[styles.hero, { color: t.text }]} adjustsFontSizeToFit numberOfLines={1}>
-              {formatMoney(data.total, currency)}
-            </Text>
-            <Text style={{ color: t.secondary, fontSize: 15 }}>
+            <AnimatedMoney amount={data.total} currency={currency} style={[styles.hero, { color: t.colors.onPrimaryContainer }]} />
+            <Text variant="bodyMedium" style={{ color: t.colors.onPrimaryContainer }}>
               {formatMoney(thisMonth, currency)} this month
               {change != null && (
-                <Text style={{ color: t.text, fontWeight: '600' }}>
+                <Text style={{ fontWeight: '700' }}>
                   {'  '}
                   {change > 0 ? '▲' : change < 0 ? '▼' : ''} {Math.abs(change)}% vs last month
                 </Text>
               )}
             </Text>
-          </View>
+          </Animated.View>
 
-          {/* Monthly trend */}
-          <View style={[styles.card, { backgroundColor: t.card }]}>
+          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={[styles.card, { backgroundColor: t.colors.surfaceContainerLow }]}>
             <View style={styles.cardHeader}>
-              <Text style={[styles.title, { color: t.text }]}>Last 6 months</Text>
+              <Text variant="titleMedium" style={{ color: t.colors.onSurface }}>
+                Last 6 months
+              </Text>
               {shown && (
-                <Text style={{ color: t.secondary, fontSize: 14, fontVariant: ['tabular-nums'] }}>
+                <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}>
                   {new Date(`${shown}-15`).toLocaleDateString(undefined, { month: 'short' })} ·{' '}
-                  <Text style={{ color: t.text, fontWeight: '600' }}>
-                    {formatMoney(data.months.find(([m]) => m === shown)?.[1] ?? 0, currency)}
-                  </Text>
+                  <Text style={{ color: t.colors.onSurface, fontWeight: '700' }}>{formatMoney(data.months.find(([m]) => m === shown)?.[1] ?? 0, currency)}</Text>
                 </Text>
               )}
             </View>
-            <View style={styles.chart} accessibilityRole="summary">
-              {data.months.map(([m, v]) => {
-                const active = m === shown;
-                return (
-                  <Pressable
-                    key={m}
-                    style={styles.barCol}
-                    onPress={() => {
-                      haptic.tap();
-                      setSelectedMonth(m);
-                    }}
-                    accessibilityLabel={`${m}: ${formatMoney(v, currency)}`}
-                  >
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.bar,
-                          { height: `${Math.max((v / maxMonth) * 100, v > 0 ? 3 : 0)}%`, backgroundColor: t.accent, opacity: active ? 1 : 0.45 },
-                        ]}
-                      />
-                    </View>
-                    <Text style={[styles.barLabel, { color: active ? t.text : t.secondary, fontWeight: active ? '600' : '400' }]}>
-                      {new Date(`${m}-15`).toLocaleDateString(undefined, { month: 'narrow' })}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.chart}>
+              {data.months.map(([m, v], i) => (
+                <MonthBar
+                  key={m}
+                  label={new Date(`${m}-15`).toLocaleDateString(undefined, { month: 'narrow' })}
+                  height={v > 0 ? Math.max((v / maxMonth) * CHART_HEIGHT, 4) : 0}
+                  active={m === shown}
+                  delay={i * 50}
+                  accessibilityLabel={`${m}: ${formatMoney(v, currency)}`}
+                  onPress={() => {
+                    haptic.tap();
+                    setSelectedMonth(m);
+                  }}
+                />
+              ))}
             </View>
-          </View>
+          </Animated.View>
 
-          {/* By category */}
-          <View style={[styles.card, { backgroundColor: t.card }]}>
-            <Text style={[styles.title, { color: t.text, marginBottom: space.md }]}>By category</Text>
-            {data.categories.map(([id, v]) => {
-              const c = categoryById(id);
+          <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={[styles.card, { backgroundColor: t.colors.surfaceContainerLow }]}>
+            <Text variant="titleMedium" style={{ color: t.colors.onSurface, marginBottom: space.md }}>
+              By category
+            </Text>
+            {data.categories.map(([id, v], i) => {
               const pct = data.total > 0 ? Math.round((v / data.total) * 100) : 0;
               return (
                 <View key={id} style={styles.catRow}>
-                  <CategoryTile category={id} size={32} />
+                  <CategoryTile category={id} size={36} />
                   <View style={{ flex: 1, gap: 6 }}>
                     <View style={styles.catText}>
-                      <Text style={{ color: t.text, fontSize: 15, fontWeight: '500' }}>{c.label}</Text>
-                      <Text style={{ color: t.text, fontSize: 15, fontVariant: ['tabular-nums'] }}>
+                      <Text variant="bodyLarge" style={{ color: t.colors.onSurface }}>
+                        {categoryById(id).label}
+                      </Text>
+                      <Text variant="bodyLarge" style={{ color: t.colors.onSurface, fontVariant: ['tabular-nums'] }}>
                         {formatMoney(v, currency)}
-                        <Text style={{ color: t.secondary }}>  {pct}%</Text>
+                        <Text style={{ color: t.colors.onSurfaceVariant }}> {pct}%</Text>
                       </Text>
                     </View>
-                    <View style={[styles.hTrack, { backgroundColor: t.fill }]}>
-                      <View style={[styles.hBar, { width: `${(v / maxCat) * 100}%`, backgroundColor: t.accent }]} />
-                    </View>
+                    <CategoryBar fraction={v / maxCat} delay={i * 60} />
                   </View>
                 </View>
               );
             })}
-          </View>
+          </Animated.View>
         </>
       )}
-    </Screen>
+    </Page>
+  );
+}
+
+function MonthBar({
+  label,
+  height,
+  active,
+  delay,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  height: number;
+  active: boolean;
+  delay: number;
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  const t = useTheme();
+  const h = useSharedValue(0);
+  const on = useSharedValue(active ? 1 : 0);
+  useEffect(() => {
+    h.set(withDelay(delay, withSpring(height, motion.standard)));
+  }, [height, delay, h]);
+  useEffect(() => {
+    on.set(withTiming(active ? 1 : 0, { duration: 200 }));
+  }, [active, on]);
+  const style = useAnimatedStyle(() => ({ height: h.get(), opacity: 0.45 + 0.55 * on.get() }));
+  return (
+    <Pressable style={styles.barCol} onPress={onPress} accessibilityLabel={accessibilityLabel}>
+      <View style={styles.barTrack}>
+        <Animated.View style={[styles.bar, { backgroundColor: t.colors.primary }, style]} />
+      </View>
+      <Text variant="labelMedium" style={{ marginTop: 6, color: active ? t.colors.onSurface : t.colors.onSurfaceVariant, fontWeight: active ? '700' : '400' }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function CategoryBar({ fraction, delay }: { fraction: number; delay: number }) {
+  const t = useTheme();
+  const w = useSharedValue(0);
+  useEffect(() => {
+    w.set(withDelay(delay, withSpring(fraction, motion.standard)));
+  }, [fraction, delay, w]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scaleX: w.get() }] }));
+  return (
+    <View style={[styles.hTrack, { backgroundColor: t.colors.surfaceContainerHighest }]}>
+      <Animated.View style={[styles.hBar, { backgroundColor: t.colors.primary }, style]} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   controls: { paddingHorizontal: space.lg, gap: space.sm, marginBottom: space.lg },
-  card: { marginHorizontal: space.lg, marginBottom: space.lg, borderRadius: radius.xl, borderCurve: 'continuous', padding: space.xl },
-  label: { fontSize: 14, fontWeight: '500' },
-  hero: { fontSize: 44, fontWeight: '700', letterSpacing: -1, marginVertical: 2, fontVariant: ['tabular-nums'] },
+  card: { marginHorizontal: space.lg, marginBottom: space.lg, borderRadius: 28, padding: space.xl },
+  hero: { fontSize: 44, lineHeight: 52, fontWeight: '600', letterSpacing: -0.5, marginVertical: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space.lg },
-  title: { fontSize: 17, fontWeight: '600' },
-  chart: { flexDirection: 'row', height: 150, gap: 2 },
+  chart: { flexDirection: 'row', height: CHART_HEIGHT + 24, gap: 2 },
   barCol: { flex: 1, alignItems: 'center' },
-  barTrack: { flex: 1, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
-  bar: { width: '62%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  barLabel: { fontSize: 12, marginTop: 6 },
+  barTrack: { height: CHART_HEIGHT, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
+  bar: { width: '58%', borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
   catRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm },
   catText: { flexDirection: 'row', justifyContent: 'space-between' },
-  hTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  hBar: { height: 6, borderRadius: 3 },
+  hTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  hBar: { height: 8, borderRadius: 4, width: '100%', transformOrigin: 'left' },
 });
