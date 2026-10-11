@@ -1,40 +1,36 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { Screen } from '@/components/ui';
-import { Section } from '@/components/List';
+import { Image } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
+import { Text } from 'react-native-paper';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { BackendForm } from '@/components/BackendForm';
+import { Page } from '@/components/Page';
 import { space, useTheme } from '@/theme';
-
-const STEPS = [
-  'Create a free project at supabase.com.',
-  'From the project folder run: npx supabase login, then npx supabase link, then npm run db:push.',
-  'Copy .env.example to .env and fill in the project URL and publishable key (Project Settings → API).',
-  'Restart the dev server with npm start.',
-];
 
 export default function Setup() {
   const t = useTheme();
   return (
-    <Screen contentContainerStyle={{ paddingTop: 100 }}>
+    <Page title="Connect" variant="hero" form>
       <View style={styles.hero}>
-        <Text style={[styles.title, { color: t.text }]}>Connect a backend</Text>
-        <Text style={[styles.body, { color: t.secondary }]}>SplitWiser stores groups and expenses in your own Supabase project.</Text>
+        <Animated.View entering={ZoomIn.springify().damping(12)}>
+          <Image source={require('../../assets/icon.png')} style={styles.logo} />
+        </Animated.View>
+        <Animated.View entering={FadeInDown.delay(120).springify()} style={{ alignItems: 'center', gap: space.sm }}>
+          <Text variant="headlineMedium" style={{ color: t.colors.onSurface }}>
+            Connect your backend
+          </Text>
+          <Text variant="bodyLarge" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+            SplitWiser keeps your groups and expenses in your own free Supabase project.
+          </Text>
+        </Animated.View>
       </View>
-      <Section>
-        {STEPS.map((s, i) => (
-          <View key={i} style={styles.step}>
-            <Text style={[styles.num, { color: t.accent }]}>{i + 1}</Text>
-            <Text style={[styles.stepText, { color: t.text }]}>{s}</Text>
-          </View>
-        ))}
-      </Section>
-    </Screen>
+      <Animated.View entering={FadeInDown.delay(220).springify()}>
+        <BackendForm />
+      </Animated.View>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: space.xl, marginBottom: space.xl, gap: space.sm },
-  title: { fontSize: 32, fontWeight: '700' },
-  body: { fontSize: 17, lineHeight: 23 },
-  step: { flexDirection: 'row', gap: space.md, padding: space.lg },
-  num: { fontSize: 17, fontWeight: '700', width: 18 },
-  stepText: { flex: 1, fontSize: 16, lineHeight: 22 },
+  hero: { alignItems: 'center', gap: space.lg, paddingHorizontal: space.xl, marginBottom: space.xl },
+  logo: { width: 96, height: 96, borderRadius: 28 },
 });
