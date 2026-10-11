@@ -13,7 +13,9 @@ fi
 export JAVA_HOME="$TOOLS/jdk"
 export ANDROID_HOME="$TOOLS/android-sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
-export GRADLE_USER_HOME="$TOOLS/gradle"
+# Gradle's cache gets a deliberately tiny folder name: Windows limits paths to 260 characters and the
+# native (C++) build reaches very deep into this cache.
+export GRADLE_USER_HOME="$ROOT/.g"
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 export NODE_ENV=production
 
