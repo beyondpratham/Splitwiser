@@ -49,7 +49,8 @@
             "backgroundColor": "#0E1511"
           }
         }
-      ]
+      ],
+      "./plugins/with-local-network"
     ],
     "scheme": "splitwiser",
     "experiments": {

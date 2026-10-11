@@ -71,7 +71,9 @@ export async function testConfig(config: BackendConfig): Promise<string | null> 
     if (!res.ok) return `The server answered with ${res.status}.`;
     return null;
   } catch {
-    return 'Could not reach that URL. Check it and your connection.';
+    return config.url.includes('localhost')
+      ? 'The local server isn’t running. Start it with npm run local:backend.'
+      : 'Could not reach that URL. Check it and your connection.';
   }
 }
 

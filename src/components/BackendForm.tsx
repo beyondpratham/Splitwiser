@@ -12,6 +12,9 @@ const STEPS = [
   'Copy the Project URL and the publishable key from Project Settings → API.',
 ];
 
+/** The local backend from `npm run local:backend`. On Android, `adb reverse` maps localhost to the computer. */
+export const LOCAL_BACKEND = { url: 'http://localhost:54321', key: 'local-development-anon-key' };
+
 /** Lets the installed app connect to any SplitWiser Supabase project, no rebuild needed. */
 export function BackendForm({ onDone }: { onDone?: () => void }) {
   const t = useTheme();
@@ -22,12 +25,11 @@ export function BackendForm({ onDone }: { onDone?: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const cleanUrl = url.trim().replace(/\/$/, '');
-  const valid = /^https:\/\/\S+\.\S+/.test(cleanUrl) && key.trim().length > 20;
+  const valid = /^https?:\/\/[^\s/]+/.test(cleanUrl) && key.trim().length > 20;
 
-  async function connect() {
+  async function connect(config = { url: cleanUrl, key: key.trim() }) {
     setBusy(true);
     setError(null);
-    const config = { url: cleanUrl, key: key.trim() };
     const problem = await testConfig(config);
     if (problem) {
       haptic.error();
@@ -43,6 +45,20 @@ export function BackendForm({ onDone }: { onDone?: () => void }) {
 
   return (
     <View style={styles.wrap}>
+      <View style={[styles.local, { backgroundColor: t.colors.tertiaryContainer }]}>
+        <Text variant="titleMedium" style={{ color: t.colors.onTertiaryContainer }}>
+          Trying it on this computer?
+        </Text>
+        <Text variant="bodyMedium" style={{ color: t.colors.onTertiaryContainer }}>
+          Run npm run local:backend, then connect to it here. Demo login: alex@demo.app / demo1234.
+        </Text>
+        <Button mode="contained-tonal" icon="laptop" onPress={() => connect(LOCAL_BACKEND)} disabled={busy} style={{ alignSelf: 'flex-start', marginTop: space.xs }}>
+          Use local server
+        </Button>
+      </View>
+      <Text variant="titleSmall" style={{ color: t.colors.primary, marginTop: space.sm, marginLeft: space.xs }}>
+        Or connect your own Supabase project
+      </Text>
       <View style={[styles.steps, { backgroundColor: t.colors.surfaceContainerLow }]}>
         {STEPS.map((s, i) => (
           <View key={i} style={styles.step}>
@@ -82,7 +98,7 @@ export function BackendForm({ onDone }: { onDone?: () => void }) {
           {error}
         </HelperText>
       )}
-      <Button mode="contained" icon="connection" onPress={connect} loading={busy} disabled={!valid || busy} contentStyle={{ height: 52 }}>
+      <Button mode="contained" icon="connection" onPress={() => connect()} loading={busy} disabled={!valid || busy} contentStyle={{ height: 52 }}>
         Connect
       </Button>
     </View>
@@ -91,6 +107,7 @@ export function BackendForm({ onDone }: { onDone?: () => void }) {
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: space.lg, gap: space.md },
+  local: { borderRadius: 24, padding: space.lg, gap: space.xs },
   steps: { borderRadius: 24, padding: space.lg, gap: space.md, marginBottom: space.sm },
   step: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   num: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
