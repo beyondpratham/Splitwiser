@@ -4,8 +4,9 @@
 import { spawn } from 'node:child_process';
 
 const children = [];
-function run(name, color, command, args) {
-  const child = spawn(command, args, { shell: process.platform === 'win32', env: process.env });
+function run(name, color, command, args, { shell = false } = {}) {
+  // A shell is only needed for npx on Windows; node is spawned directly (its path may contain spaces).
+  const child = shell ? spawn([command, ...args].join(' '), { shell: true, env: process.env }) : spawn(command, args, { env: process.env });
   const prefix = `\x1b[${color}m[${name}]\x1b[0m `;
   const pipe = (stream, out) =>
     stream.on('data', (d) =>
@@ -31,5 +32,5 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 
 run('backend', '32', process.execPath, ['scripts/local-backend.mjs']);
-run('app', '36', 'npx', ['expo', 'start', '--web', '--port', '8081']);
+run('app', '36', 'npx', ['expo', 'start', '--web', '--port', '8081'], { shell: true });
 console.log('\nOpen http://localhost:8081, tap "Use local server", then sign in with alex@demo.app / demo1234.\n');
