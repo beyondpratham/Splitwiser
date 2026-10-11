@@ -1,38 +1,49 @@
 # SplitWiser
 
-An ad-free Splitwise alternative for iOS, built with Expo (React Native) and Supabase.
+An ad-free Splitwise alternative for Android, built with Expo (React Native), Material 3 and Supabase.
 
 - **Groups and friends.** Expenses can be inside a group or between friends directly. Friends can be added by email before they have an account.
 - **Splits.** Equal (with people left out), exact amounts, percentages, or shares. Several people can pay for one expense.
 - **Balances.** A running total per friend and per group, with optional debt simplification (fewest payments). Settle up in one tap.
-- **Activity and comments.** A live activity feed, comments on each expense, full edit history, and restoring deleted expenses.
+- **Activity and comments.** A live activity feed, comments on each expense, full edit history, and undo or restore for deleted expenses.
 - **Currencies and categories.** Each expense has its own currency, plus 20 categories that are guessed from the description. Insights show spending by month and by category.
-- **iOS-native UI.** SF Symbols, large titles, native tabs, page sheets, haptics, and light and dark mode.
+- **Material 3 design.** A full color scheme generated from the brand green (light and dark), expressive grouped lists, a collapsing large top app bar, an extended FAB that shrinks on scroll, a navigation bar with a springy indicator, draggable bottom sheets, Material dialogs, snackbars and the Material date picker. Motion uses Reanimated springs throughout.
 
 ## Everything stays local to the project
 
-Nothing is installed globally. All tools (Expo CLI, Supabase CLI, ESLint, PGlite) are dev dependencies in `node_modules`. The npm cache lives in `./.npm-cache` (set in `.npmrc`). The EAS CLI runs through `npx eas-cli`, so it's cached there too.
+Nothing is installed globally:
 
-Requirements: Node 20+ and an iPhone with **Expo Go** from the App Store.
+- **Node tools** (Expo CLI, Supabase CLI, ESLint, PGlite) are dev dependencies, and the npm cache lives in `./.npm-cache`.
+- **The JDK 17, Android SDK and Gradle cache** are downloaded into `./.toolchain/` by `npm run android:setup`. That folder is git-ignored.
 
-## Setup
+Requirements: Node 20+ and Git Bash (comes with Git for Windows).
+
+## Build the APK
 
 ```bash
 npm install
-
-# 1. Create a free project at https://supabase.com, then:
-npm run db:login          # opens the browser once
-npm run db:link           # pick your project
-npm run db:push           # applies supabase/migrations
-
-# 2. Configure the app
-cp .env.example .env      # fill in URL + publishable key (Project Settings → API)
-
-# 3. Run it
-npm start                 # scan the QR code with your iPhone camera
+npm run android:apk      # first run downloads the toolchain; output: dist/SplitWiser.apk
 ```
 
-In the Supabase dashboard you may want to turn off **Authentication → Providers → Email → Confirm email** while testing, so sign-up logs you straight in.
+Copy `dist/SplitWiser.apk` to your phone and open it (allow "Install unknown apps" for your file manager). The APK is signed with the debug key, which is fine for testing but not for the Play Store.
+
+## Connect a backend
+
+The app asks for a Supabase project on first launch, so no rebuild is needed:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Apply the schema. Either paste `supabase/migrations/20261010000000_init.sql` into the project's **SQL editor** and run it, or run `npm run db:login`, `npm run db:link` and `npm run db:push`.
+3. In the app, enter the **Project URL** and **publishable key** (Project Settings → API).
+
+While testing, you may want to turn off **Authentication → Providers → Email → Confirm email** so sign-up logs you straight in.
+
+You can also bake a backend in at build time with a `.env` file (see `.env.example`).
+
+## Develop
+
+```bash
+npm start                # then press "a" for an Android device/emulator with a dev build
+```
 
 ## Checks
 
@@ -41,15 +52,6 @@ npm test          # money unit tests + full database tests (in-memory Postgres v
 npm run typecheck
 npm run lint
 npm run doctor
-```
-
-The database tests run the real migration and exercise sign-ups, placeholder friends, every split type, settle-up, edit history, comments, delete/restore, and row-level-security denials.
-
-## Shipping to the App Store (no Mac needed)
-
-```bash
-npm run build:ios    # EAS cloud build (needs an Apple Developer account)
-npm run submit:ios   # upload to App Store Connect / TestFlight
 ```
 
 ## Project layout
@@ -62,14 +64,17 @@ src/app/            screens (Expo Router; files are routes)
   expense/[id].tsx  expense detail, comments, history
   add-expense.tsx   add / edit expense
   settle-up.tsx     record a payment
-src/components/     UI kit (lists, sheets, pickers, avatars…)
+src/components/     Material UI kit (Page, lists, sheets, pickers, navigation bar…)
+src/theme/          generated Material 3 palette + Paper themes + motion springs
 src/lib/            data hooks (api.ts), money math, balances, categories
 supabase/migrations schema, row-level security, RPCs
-scripts/            tests and the icon generator
+scripts/            toolchain + APK build, tests, icon and theme generators
 ```
 
 ### How money works
 
 Each expense stores, per person, how much they **paid** and how much they **owe**. A settle-up is just an expense with `is_payment = true`. Balances are never stored; Postgres views (`pair_debts`, `my_balances`, `group_balances`) derive them. All writes go through transactional RPCs (`save_expense`, `delete_expense`, …), which validate that the totals add up and record activity. Client-side math uses integer minor units (cents) with largest-remainder rounding, so splits always add up exactly.
 
-The app icon comes from `scripts/generate-icons.mjs` (`npm run icons`).
+## Publishing to Google Play
+
+Create an upload keystore, then build an Android App Bundle with `npx eas-cli build --platform android` or `./gradlew bundleRelease` using that keystore. The app icon comes from `npm run icons` and the color scheme from `npm run theme`.
