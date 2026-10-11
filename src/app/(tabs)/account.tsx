@@ -10,7 +10,7 @@ import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { CurrencyPicker } from '@/components/Pickers';
 import { haptic } from '@/components/ui';
-import { useMe, useUpdateProfile } from '@/lib/api';
+import { useDeleteAccount, useMe, useUpdateProfile } from '@/lib/api';
 import { currencyByCode } from '@/lib/currencies';
 import { supabase } from '@/lib/supabase';
 import { space, useTheme } from '@/theme';
@@ -21,6 +21,7 @@ export default function Account() {
   const t = useTheme();
   const me = useMe().data;
   const update = useUpdateProfile();
+  const deleteAccount = useDeleteAccount();
   const { confirm, prompt, fail } = useFeedback();
   const [currencyOpen, setCurrencyOpen] = useState(false);
 
@@ -91,6 +92,27 @@ export default function Account() {
                 tone="error"
                 onPress={async () => {
                   if (await confirm({ title: 'Sign out?', confirmLabel: 'Sign out', destructive: true })) supabase.auth.signOut();
+                }}
+              />
+              <ListItem
+                left={<Tile icon="account-remove-outline" danger />}
+                title="Delete account"
+                subtitle="Removes your login, friends and comments"
+                tone="error"
+                onPress={async () => {
+                  const sure = await confirm({
+                    title: 'Delete your account?',
+                    message:
+                      'Your login, friend list and comments are removed for good. Expenses you shared stay visible to the other people in them, shown as “Deleted user”.',
+                    confirmLabel: 'Delete account',
+                    destructive: true,
+                  });
+                  if (!sure) return;
+                  try {
+                    await deleteAccount.mutateAsync();
+                  } catch (e) {
+                    fail(e);
+                  }
                 }}
               />
             </ListGroup>

@@ -294,3 +294,13 @@ export const useUpdateProfile = () =>
   useAction(({ id, ...patch }: Partial<Pick<Profile, 'name' | 'avatar_color' | 'default_currency'>> & { id: string }) =>
     unwrap<null>(supabase.from('profiles').update(patch).eq('id', id)),
   );
+
+/** Deletes the login, friendships and comments; shared expenses stay with a "Deleted user". */
+export const useDeleteAccount = () =>
+  useMutation({
+    // No refetch afterwards: the profile is gone, so sign out locally and let the auth gate take over.
+    mutationFn: async () => {
+      await unwrap<null>(supabase.rpc('delete_my_account'));
+      await supabase.auth.signOut({ scope: 'local' });
+    },
+  });
