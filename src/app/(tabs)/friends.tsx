@@ -1,14 +1,17 @@
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { RefreshControl, Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Button, Searchbar, Text } from 'react-native-paper';
 import { Avatar } from '@/components/Avatar';
 import { BalanceSummary } from '@/components/BalanceSummary';
-import { Row, Section } from '@/components/List';
-import { Button, EmptyState, FloatingButton, HeaderButton, Screen } from '@/components/ui';
+import { ListGroup, ListItem } from '@/components/List';
+import { Page } from '@/components/Page';
+import { EmptyState } from '@/components/ui';
 import { useFriends, useMyBalances } from '@/lib/api';
 import { entries, summarizeBalances } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
-import { useTheme } from '@/theme';
+import type { Profile } from '@/lib/types';
+import { space, useTheme } from '@/theme';
 
 export default function Friends() {
   const t = useTheme();
@@ -20,24 +23,25 @@ export default function Friends() {
   const [outstanding, settled] = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = friends.filter((f) => !q || f.name.toLowerCase().includes(q) || f.email?.includes(q));
-    const withBal = list.filter((f) => entries(summary.byFriend.get(f.id)).length > 0);
-    // largest balances first
-    withBal.sort((a, b) => Math.abs(entries(summary.byFriend.get(b.id))[0][1]) - Math.abs(entries(summary.byFriend.get(a.id))[0][1]));
-    return [withBal, list.filter((f) => entries(summary.byFriend.get(f.id)).length === 0)];
+    const size = (f: Profile) => Math.abs(entries(summary.byFriend.get(f.id))[0]?.[1] ?? 0);
+    const withBal = list.filter((f) => size(f) > 0).sort((a, b) => size(b) - size(a));
+    return [withBal, list.filter((f) => size(f) === 0)];
   }, [friends, summary.byFriend, query]);
 
-  const renderFriend = (f: (typeof friends)[number]) => {
+  const renderFriend = (f: Profile) => {
     const bal = entries(summary.byFriend.get(f.id));
     return (
-      <Row
+      <ListItem
         key={f.id}
         left={<Avatar name={f.name} color={f.avatar_color} />}
         title={f.name}
         subtitle={
           bal.length === 0 ? (
-            <Text style={{ color: t.secondary, fontSize: 14 }}>{f.user_id ? 'settled up' : 'invited · settled up'}</Text>
+            <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }}>
+              {f.user_id ? 'settled up' : 'invited · settled up'}
+            </Text>
           ) : (
-            <Text style={{ fontSize: 14, color: bal[0][1] > 0 ? t.owed : t.owe }} numberOfLines={1}>
+            <Text variant="bodyMedium" style={{ color: bal[0][1] > 0 ? t.colors.owed : t.colors.owe }} numberOfLines={1}>
               {bal[0][1] > 0 ? 'owes you ' : 'you owe '}
               {bal.map(([c, v]) => formatMoney(Math.abs(v), c)).join(' + ')}
             </Text>
@@ -50,30 +54,49 @@ export default function Friends() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen
-        options={{
-          headerRight: () => <HeaderButton icon="person.badge.plus" onPress={() => router.push('/add-friend')} />,
-          headerSearchBarOptions: { placeholder: 'Search friends', onChangeText: (e) => setQuery(e.nativeEvent.text), hideWhenScrolling: true },
-        }}
-      />
-      <Screen refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); balances.refetch(); }} />}>
-        {!query && <BalanceSummary {...summary} />}
-        {data && friends.length === 0 ? (
-          <EmptyState
-            icon="person.2.fill"
-            title="Add your first friend"
-            message="Add friends by email. They don’t need an account yet — they’ll see everything once they sign up."
-            action={<Button title="Add a friend" icon="person.badge.plus" onPress={() => router.push('/add-friend')} />}
-          />
-        ) : (
-          <>
-            {outstanding.length > 0 && <Section title="Outstanding">{outstanding.map(renderFriend)}</Section>}
-            {settled.length > 0 && <Section title="Settled up">{settled.map(renderFriend)}</Section>}
-          </>
-        )}
-      </Screen>
-      <FloatingButton title="Add expense" onPress={() => router.push('/add-expense')} />
-    </View>
+    <Page
+      title="Friends"
+      variant="large"
+      inTabs
+      actions={[{ icon: 'account-plus-outline', label: 'Add friend', onPress: () => router.push('/add-friend') }]}
+      fab={{ label: 'Add expense', icon: 'plus', onPress: () => router.push('/add-expense') }}
+      refreshing={isRefetching}
+      onRefresh={() => {
+        refetch();
+        balances.refetch();
+      }}
+    >
+      {friends.length > 4 && (
+        <View style={{ paddingHorizontal: space.lg, marginBottom: space.lg }}>
+          <Searchbar value={query} onChangeText={setQuery} placeholder="Search friends" mode="bar" />
+        </View>
+      )}
+      {!query && <BalanceSummary {...summary} />}
+      {data && friends.length === 0 ? (
+        <EmptyState
+          icon="account-heart"
+          title="Add your first friend"
+          message="Add friends by email. They don’t need an account yet — they’ll see everything once they sign up."
+          action={
+            <Button mode="contained-tonal" icon="account-plus" onPress={() => router.push('/add-friend')}>
+              Add a friend
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          {outstanding.length > 0 && (
+            <ListGroup title="Outstanding" animateIndex={1}>
+              {outstanding.map(renderFriend)}
+            </ListGroup>
+          )}
+          {settled.length > 0 && (
+            <ListGroup title="Settled up" animateIndex={2}>
+              {settled.map(renderFriend)}
+            </ListGroup>
+          )}
+        </>
+      )}
+    </Page>
   );
 }

@@ -1,10 +1,11 @@
-import { router, Stack } from 'expo-router';
-import { RefreshControl, Text, View } from 'react-native';
-import { BalanceSummary } from '@/components/BalanceSummary';
+import { router } from 'expo-router';
+import { Button, Text } from 'react-native-paper';
 import { EmojiTile } from '@/components/Avatar';
+import { BalanceSummary } from '@/components/BalanceSummary';
 import { Icon } from '@/components/Icon';
-import { Row, Section } from '@/components/List';
-import { EmptyState, Button, FloatingButton, HeaderButton, Screen } from '@/components/ui';
+import { ListGroup, ListItem } from '@/components/List';
+import { Page } from '@/components/Page';
+import { EmptyState } from '@/components/ui';
 import { useGroups, useMyBalances } from '@/lib/api';
 import { entries, summarizeBalances } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
@@ -18,76 +19,79 @@ export default function Groups() {
   const nonGroup = summary.byGroup.get('none');
 
   return (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ headerRight: () => <HeaderButton icon="plus" onPress={() => router.push('/new-group')} /> }} />
-      <Screen
-        refreshControl={
-          <RefreshControl
-            refreshing={groups.isRefetching || balances.isRefetching}
-            onRefresh={() => {
-              groups.refetch();
-              balances.refetch();
-            }}
-          />
-        }
-      >
-        <BalanceSummary {...summary} />
+    <Page
+      title="Groups"
+      variant="large"
+      inTabs
+      actions={[{ icon: 'account-multiple-plus-outline', label: 'New group', onPress: () => router.push('/new-group') }]}
+      fab={{ label: 'Add expense', icon: 'plus', onPress: () => router.push('/add-expense') }}
+      refreshing={groups.isRefetching || balances.isRefetching}
+      onRefresh={() => {
+        groups.refetch();
+        balances.refetch();
+      }}
+    >
+      <BalanceSummary {...summary} />
 
-        {groups.data && groups.data.length === 0 ? (
-          <EmptyState
-            icon="person.3.fill"
-            title="No groups yet"
-            message="Create a group for your home, a trip, or anything you share costs for."
-            action={<Button title="Start a group" icon="plus" onPress={() => router.push('/new-group')} />}
+      {groups.data && groups.data.length === 0 ? (
+        <EmptyState
+          icon="account-group"
+          title="No groups yet"
+          message="Create a group for your home, a trip, or anything you share costs for."
+          action={
+            <Button mode="contained-tonal" icon="plus" onPress={() => router.push('/new-group')}>
+              Start a group
+            </Button>
+          }
+        />
+      ) : (
+        <ListGroup title="Your groups" animateIndex={1}>
+          {(groups.data ?? []).map((g) => {
+            const bal = entries(summary.byGroup.get(g.id));
+            return (
+              <ListItem
+                key={g.id}
+                left={<EmojiTile emoji={g.emoji} />}
+                title={g.name}
+                subtitle={
+                  bal.length === 0 ? (
+                    <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }}>
+                      settled up · {g.group_members.length} people
+                    </Text>
+                  ) : (
+                    <Text variant="bodyMedium" style={{ color: bal[0][1] > 0 ? t.colors.owed : t.colors.owe }} numberOfLines={1}>
+                      {bal[0][1] > 0 ? 'you are owed ' : 'you owe '}
+                      {bal.map(([c, v]) => formatMoney(Math.abs(v), c)).join(' + ')}
+                    </Text>
+                  )
+                }
+                chevron
+                onPress={() => router.push({ pathname: '/group/[id]', params: { id: g.id } })}
+              />
+            );
+          })}
+          <ListItem
+            left={<Icon name="plus-circle" size={32} color={t.colors.primary} />}
+            title="Start a new group"
+            tone="primary"
+            onPress={() => router.push('/new-group')}
           />
-        ) : (
-          <Section title="Your groups">
-            {(groups.data ?? []).map((g) => {
-              const bal = entries(summary.byGroup.get(g.id));
-              return (
-                <Row
-                  key={g.id}
-                  left={<EmojiTile emoji={g.emoji} />}
-                  title={g.name}
-                  subtitle={
-                    bal.length === 0 ? (
-                      <Text style={{ color: t.secondary, fontSize: 14 }}>settled up</Text>
-                    ) : (
-                      <Text style={{ fontSize: 14, color: bal[0][1] > 0 ? t.owed : t.owe }} numberOfLines={1}>
-                        {bal[0][1] > 0 ? 'you are owed ' : 'you owe '}
-                        {bal.map(([c, v]) => formatMoney(Math.abs(v), c)).join(' + ')}
-                      </Text>
-                    )
-                  }
-                  detail={`${g.group_members.length}`}
-                  right={<Icon name="person.fill" size={12} color={t.tertiary} />}
-                  chevron
-                  onPress={() => router.push({ pathname: '/group/[id]', params: { id: g.id } })}
-                />
-              );
-            })}
-            <Row
-              left={<Icon name="plus.circle.fill" size={28} color={t.accent} />}
-              title="Start a new group"
-              tint
-              onPress={() => router.push('/new-group')}
-            />
-          </Section>
-        )}
+        </ListGroup>
+      )}
 
-        {nonGroup && (
-          <Section footer="Expenses with friends outside any group live on each friend’s page.">
-            <Row
-              left={<EmojiTile emoji="🤝" />}
-              title="Non-group expenses"
-              subtitle={entries(nonGroup).map(([c, v]) => `${v > 0 ? 'owed' : 'owe'} ${formatMoney(Math.abs(v), c)}`).join(' · ')}
-              chevron
-              onPress={() => router.navigate('/friends')}
-            />
-          </Section>
-        )}
-      </Screen>
-      <FloatingButton title="Add expense" onPress={() => router.push('/add-expense')} />
-    </View>
+      {nonGroup && (
+        <ListGroup footer="Expenses with friends outside any group live on each friend’s page." animateIndex={2}>
+          <ListItem
+            left={<EmojiTile emoji="🤝" />}
+            title="Non-group expenses"
+            subtitle={entries(nonGroup)
+              .map(([c, v]) => `${v > 0 ? 'owed' : 'owe'} ${formatMoney(Math.abs(v), c)}`)
+              .join(' · ')}
+            chevron
+            onPress={() => router.navigate('/friends')}
+          />
+        </ListGroup>
+      )}
+    </Page>
   );
 }
