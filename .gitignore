@@ -49,3 +49,6 @@ supabase/.temp
 
 # project-local Android toolchain (JDK, SDK, Gradle cache)
 .toolchain/
+
+# build output
+dist/

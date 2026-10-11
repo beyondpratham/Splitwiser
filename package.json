@@ -43,8 +43,8 @@
   },
   "scripts": {
     "start": "expo start",
-    "ios": "expo start --ios",
-    "android": "expo start --android",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
     "web": "expo start --web",
     "db:login": "supabase login",
     "db:link": "supabase link",
@@ -57,7 +57,9 @@
     "icons": "node scripts/generate-icons.mjs",
     "build:ios": "npx eas-cli@latest build --platform ios",
     "submit:ios": "npx eas-cli@latest submit --platform ios",
-    "theme": "node scripts/generate-theme.mjs"
+    "theme": "node scripts/generate-theme.mjs",
+    "android:setup": "bash scripts/setup-android.sh",
+    "android:apk": "bash scripts/build-apk.sh"
   },
   "private": true
 }
