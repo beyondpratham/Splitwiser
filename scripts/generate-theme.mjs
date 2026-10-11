@@ -30,15 +30,20 @@ function scheme(isDark) {
   const out = {};
   for (const role of ROLES) out[role] = hexFromArgb(MaterialDynamicColors[role].getArgb(s));
 
+  // Text tones keep the full color; containers use a calmer chroma, as Material does for containers.
+  const owedHct = Hct.fromInt(argbFromHex(SEED));
+  const oweHct = Hct.fromInt(Blend.harmonize(argbFromHex(OWE), argbFromHex(SEED)));
   const owed = TonalPalette.fromInt(argbFromHex(SEED));
-  const owe = TonalPalette.fromInt(Blend.harmonize(argbFromHex(OWE), argbFromHex(SEED)));
+  const owe = TonalPalette.fromInt(oweHct.toInt());
+  const owedSoft = TonalPalette.fromHueAndChroma(owedHct.hue, 22);
+  const oweSoft = TonalPalette.fromHueAndChroma(oweHct.hue, 26);
   Object.assign(out, {
     owed: hexFromArgb(owed.tone(isDark ? 80 : 40)),
-    owedContainer: hexFromArgb(owed.tone(isDark ? 30 : 90)),
-    onOwedContainer: hexFromArgb(owed.tone(isDark ? 90 : 10)),
+    owedContainer: hexFromArgb(owedSoft.tone(isDark ? 25 : 92)),
+    onOwedContainer: hexFromArgb(owedSoft.tone(isDark ? 92 : 10)),
     owe: hexFromArgb(owe.tone(isDark ? 80 : 45)),
-    oweContainer: hexFromArgb(owe.tone(isDark ? 30 : 90)),
-    onOweContainer: hexFromArgb(owe.tone(isDark ? 90 : 10)),
+    oweContainer: hexFromArgb(oweSoft.tone(isDark ? 25 : 92)),
+    onOweContainer: hexFromArgb(oweSoft.tone(isDark ? 92 : 10)),
   });
   return out;
 }

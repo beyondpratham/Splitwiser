@@ -38,10 +38,10 @@ export const lightColors = {
   inverseOnSurface: '#ecf3eb',
   inversePrimary: '#5edd9d',
   owed: '#006d44',
-  owedContainer: '#7cfab7',
-  onOwedContainer: '#002111',
+  owedContainer: '#ccf1d7',
+  onOwedContainer: '#012111',
   owe: '#a15800',
-  oweContainer: '#ffdcc2',
+  oweContainer: '#ffe3cf',
   onOweContainer: '#2e1500',
 };
 
@@ -83,11 +83,11 @@ export const darkColors: typeof lightColors = {
   inverseOnSurface: '#2b322d',
   inversePrimary: '#006d44',
   owed: '#5edd9d',
-  owedContainer: '#005232',
-  onOwedContainer: '#7cfab7',
+  owedContainer: '#224230',
+  onOwedContainer: '#ccf1d7',
   owe: '#ffb77a',
-  oweContainer: '#6d3a00',
-  onOweContainer: '#ffdcc2',
+  oweContainer: '#563312',
+  onOweContainer: '#ffe3cf',
 };
 
 export type SchemeColors = typeof lightColors;
