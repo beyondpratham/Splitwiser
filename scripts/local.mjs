@@ -2,6 +2,7 @@
 // (with live reload) and opens it in the browser. Usage: npm run local
 // In the app, tap "Use local server", then sign in with alex@demo.app / demo1234.
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 
 const children = [];
 function run(name, color, command, args, { shell = false } = {}) {
@@ -32,5 +33,15 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 
 run('backend', '32', process.execPath, ['scripts/local-backend.mjs']);
-run('app', '36', 'npx', ['expo', 'start', '--web', '--port', '8081'], { shell: true });
-console.log('\nOpen http://localhost:8081, tap "Use local server", then sign in with alex@demo.app / demo1234.\n');
+/** First port from `start` that nothing is listening on. */
+function freePort(start) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(freePort(start + 1)));
+    server.listen(start, () => server.close(() => resolve(start)));
+  });
+}
+
+const port = await freePort(8081);
+run('app', '36', 'npx', ['expo', 'start', '--web', '--port', String(port)], { shell: true });
+console.log(`\nOpen http://localhost:${port}, tap "Use local server", then sign in with alex@demo.app / demo1234.\n`);
