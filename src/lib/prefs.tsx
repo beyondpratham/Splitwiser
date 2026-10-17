@@ -1,15 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from 'react';
 
-/** Device-level preferences (notifications, privacy), remembered on this phone. */
+/** Device-level preferences (privacy), remembered on this phone. Notification choices live on the server. */
 export interface Prefs {
-  notify: {
-    expenses: boolean;
-    comments: boolean;
-    payments: boolean;
-    reminders: boolean;
-    weekly: boolean;
-  };
   privacy: {
     appLock: boolean;
     hideBalances: boolean;
@@ -18,7 +11,6 @@ export interface Prefs {
 }
 
 export const DEFAULT_PREFS: Prefs = {
-  notify: { expenses: true, comments: true, payments: true, reminders: true, weekly: false },
   privacy: { appLock: false, hideBalances: false, showPhone: true },
 };
 
@@ -41,7 +33,7 @@ export function PrefsProvider({ children }: PropsWithChildren) {
     AsyncStorage.getItem(KEY)
       .then((raw) => {
         const saved = raw ? (JSON.parse(raw) as Partial<Prefs>) : {};
-        const loaded = { notify: { ...DEFAULT_PREFS.notify, ...saved.notify }, privacy: { ...DEFAULT_PREFS.privacy, ...saved.privacy } };
+        const loaded = { privacy: { ...DEFAULT_PREFS.privacy, ...saved.privacy } };
         setPrefs(loaded);
         setAtLaunch(loaded);
       })

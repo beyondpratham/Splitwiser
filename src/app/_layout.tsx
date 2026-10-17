@@ -15,8 +15,9 @@ import { Loading } from '@/components/ui';
 import { useRealtimeSync } from '@/lib/api';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { isActiveDevice } from '@/lib/device';
+import { unregisterPush, usePushNotifications } from '@/lib/notifications';
 import { PrefsProvider } from '@/lib/prefs';
-import { friendlyError, supabase } from '@/lib/supabase';
+import { backendLocked, friendlyError, supabase } from '@/lib/supabase';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -30,6 +31,7 @@ function useSingleDevice(signedIn: boolean) {
     const check = async () => {
       if (alive && !(await isActiveDevice())) {
         toast('You signed in on another device, so SplitWiser signed out here.');
+        await unregisterPush();
         await supabase.auth.signOut({ scope: 'local' });
       }
     };
@@ -51,10 +53,11 @@ function RootStack() {
   const userId = session?.user.id;
   useRealtimeSync();
   useSingleDevice(!!session);
+  usePushNotifications(!!session);
 
   // Never show one account's cached data to another.
   useEffect(() => {
-    qc.clear();
+    qc.resetQueries(); // drops cached data and refetches whatever is on screen
   }, [userId, qc]);
 
   useEffect(() => {
@@ -74,6 +77,7 @@ function RootStack() {
         </Stack.Protected>
         <Stack.Protected guard={configured && !session}>
           <Stack.Screen name="sign-in" options={{ animation: 'fade' }} />
+          <Stack.Screen name="reset-password" options={dialog} />
         </Stack.Protected>
         <Stack.Protected guard={configured && !!session}>
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
@@ -88,8 +92,9 @@ function RootStack() {
           <Stack.Screen name="help" />
           <Stack.Screen name="contacts" />
           <Stack.Screen name="import" />
-          <Stack.Screen name="coffee" options={dialog} />
-          <Stack.Screen name="backend" options={dialog} />
+          <Stack.Protected guard={!backendLocked}>
+            <Stack.Screen name="backend" options={dialog} />
+          </Stack.Protected>
           <Stack.Screen name="add-expense" options={dialog} />
           <Stack.Screen name="settle-up" options={dialog} />
           <Stack.Screen name="new-group" options={dialog} />

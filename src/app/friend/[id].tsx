@@ -10,7 +10,7 @@ import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
 import { EmptyState, Loading } from '@/components/ui';
-import { useFriendExpenses, useGroups, useMe, useMyBalances, usePeople, useRemoveFriend } from '@/lib/api';
+import { useFriendExpenses, useGroups, useMe, useMyBalances, usePeople, useRemoveFriend, useSendReminder } from '@/lib/api';
 import { entries, summarizeBalances } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
 import { space } from '@/theme';
@@ -24,6 +24,7 @@ export default function FriendScreen() {
   const balances = useMyBalances();
   const groupsData = useGroups().data;
   const removeFriend = useRemoveFriend();
+  const sendReminder = useSendReminder();
   const { confirm, toast, fail } = useFeedback();
   const summary = summarizeBalances(balances.data ?? []);
   const total = entries(summary.byFriend.get(id));
@@ -34,7 +35,8 @@ export default function FriendScreen() {
   const first = friend.name.split(' ')[0];
   const theyOwe = total.filter(([, v]) => v > 0);
 
-  const remind = async () => {
+  // a message to send yourself (WhatsApp, SMS…), for friends who aren't on SplitWiser yet
+  const shareReminder = async () => {
     const amounts = theyOwe.map(([c, v]) => formatMoney(v, c)).join(' and ');
     const message = `Hi ${first}! Friendly reminder from SplitWiser: you owe me ${amounts}. Thanks! 🙂`;
     try {
@@ -44,12 +46,19 @@ export default function FriendScreen() {
     }
   };
 
+  // signed-up friends get a push / email reminder (whichever they chose)
+  const remind = () => {
+    if (!friend.user_id) return shareReminder();
+    sendReminder.mutate(id, { onSuccess: () => toast(`Reminder sent to ${first}`), onError: fail });
+  };
+
   return (
     <Page
       title={friend.name}
       variant="hero"
       back
       menu={[
+        ...(theyOwe.length && friend.user_id ? [{ label: 'Share a reminder message', icon: 'share-variant-outline' as const, onPress: shareReminder }] : []),
         {
           label: 'Remove friend',
           icon: 'account-remove-outline',
@@ -113,7 +122,7 @@ export default function FriendScreen() {
             router.push({ pathname: '/settle-up', params: { from: v > 0 ? id : me!.id, to: v > 0 ? me!.id : id, amount: String(Math.abs(v)), currency: c } });
           }}
         />
-        <Button title="Remind" icon="bell-ring-outline" variant="glass" disabled={theyOwe.length === 0} style={{ flex: 1 }} onPress={remind} />
+        <Button title="Remind" icon="bell-ring-outline" variant="glass" disabled={theyOwe.length === 0} loading={sendReminder.isPending} style={{ flex: 1 }} onPress={remind} />
       </View>
 
       {perGroup && perGroup.size > 1 && (

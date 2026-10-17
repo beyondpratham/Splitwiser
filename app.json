@@ -77,6 +77,14 @@
         {
           "faceIDPermission": "SplitWiser uses Face ID to lock the app."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#13B079",
+          "defaultChannel": "default"
+        }
       ]
     ],
     "scheme": "splitwiser",

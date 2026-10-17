@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useAuth } from './auth';
+import type { Channel, NotificationPrefs, NotifyCategory } from './notifications';
 import { supabase } from './supabase';
 import type {
   Activity,
@@ -322,3 +323,35 @@ export const findUsersByContacts = (emails: string[], phones: string[]) =>
 
 export const useAddFriendByPhone = () =>
   useAction((phone: string) => unwrap<string>(supabase.rpc('add_friend_by_phone', { friend_phone: phone })));
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+/** How I want to hear about each kind of event (push, email, both or off). */
+export function useNotificationPrefs() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ['notification-prefs'],
+    enabled: !!session,
+    queryFn: () => unwrap<NotificationPrefs>(supabase.rpc('my_notification_prefs')),
+  });
+}
+
+export function useSetNotificationPref() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ category, channel }: { category: NotifyCategory; channel: Channel }) =>
+      unwrap<null>(supabase.rpc('set_notification_pref', { category, channel })),
+    // show the choice straight away; roll back if the server refuses
+    onMutate: async ({ category, channel }) => {
+      await qc.cancelQueries({ queryKey: ['notification-prefs'] });
+      const before = qc.getQueryData<NotificationPrefs>(['notification-prefs']);
+      if (before) qc.setQueryData(['notification-prefs'], { ...before, [category]: channel });
+      return { before };
+    },
+    onError: (_e, _v, ctx) => ctx?.before && qc.setQueryData(['notification-prefs'], ctx.before),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['notification-prefs'] }),
+  });
+}
+
+/** Sends a friend who owes me a push / email reminder (at most one every 12 hours). */
+export const useSendReminder = () => useMutation({ mutationFn: (fid: string) => unwrap<null>(supabase.rpc('send_reminder', { fid })) });

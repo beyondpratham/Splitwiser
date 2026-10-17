@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { canUseAppLock, confirmIdentity } from '@/components/AppLock';
 import { Segmented, Switch } from '@/components/Controls';
@@ -6,27 +7,50 @@ import { useFeedback } from '@/components/Feedback';
 import { Glass } from '@/components/Glass';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
+import { ActionSheet } from '@/components/Sheet';
 import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
-import { useDeleteAccount } from '@/lib/api';
-import { usePrefs, type Prefs } from '@/lib/prefs';
-import { supabase } from '@/lib/supabase';
+import { useDeleteAccount, useNotificationPrefs, useSetNotificationPref } from '@/lib/api';
+import { registerForPush, signOut, type Channel, type NotifyCategory } from '@/lib/notifications';
+import { usePrefs } from '@/lib/prefs';
+import { backendLocked } from '@/lib/supabase';
 import { space, useThemeMode, type ThemeMode } from '@/theme';
 import type { IconName } from '@/components/Icon';
 
-const NOTIFY: { key: keyof Prefs['notify']; title: string; subtitle: string; icon: IconName }[] = [
-  { key: 'expenses', title: 'New expenses', subtitle: 'When someone adds or edits an expense with you', icon: 'receipt-text-outline' },
-  { key: 'comments', title: 'Comments', subtitle: 'Replies on expenses you’re part of', icon: 'comment-text-outline' },
-  { key: 'payments', title: 'Payments', subtitle: 'When someone settles up with you', icon: 'cash-check' },
-  { key: 'reminders', title: 'Reminders', subtitle: 'Friendly nudges from friends you owe', icon: 'bell-ring-outline' },
-  { key: 'weekly', title: 'Weekly summary', subtitle: 'What you owe and are owed, every Sunday', icon: 'calendar-week' },
+const NOTIFY: { key: NotifyCategory; title: string; about: string; icon: IconName }[] = [
+  { key: 'expenses', title: 'Expenses', about: 'Someone adds, edits or deletes an expense you’re in', icon: 'receipt-text-outline' },
+  { key: 'payments', title: 'Payments', about: 'Someone pays you or records a payment with you', icon: 'cash-check' },
+  { key: 'comments', title: 'Comments', about: 'Someone comments on an expense you’re in', icon: 'comment-text-outline' },
+  { key: 'friends', title: 'Friends & groups', about: 'Someone adds you as a friend or to a group', icon: 'account-multiple-plus-outline' },
+  { key: 'reminders', title: 'Reminders', about: 'A friend reminds you that you owe them', icon: 'bell-ring-outline' },
+  { key: 'weekly', title: 'Weekly summary', about: 'What you owe and are owed, every Sunday', icon: 'calendar-week' },
 ];
+
+const CHANNELS: { value: Channel; label: string; icon: IconName }[] = [
+  { value: 'push', label: 'Push notification', icon: 'cellphone-message' },
+  { value: 'email', label: 'Email', icon: 'email-outline' },
+  { value: 'both', label: 'Push and email', icon: 'bell-plus-outline' },
+  { value: 'off', label: 'Off', icon: 'bell-off-outline' },
+];
+const channelLabel = (c?: Channel) => (c === 'both' ? 'Push and email' : c === 'push' ? 'Push' : c === 'email' ? 'Email' : c === 'off' ? 'Off' : '…');
 
 export default function Settings() {
   const { mode, setMode } = useThemeMode();
   const { prefs, set } = usePrefs();
   const deleteAccount = useDeleteAccount();
   const { confirm, toast, fail } = useFeedback();
+  const notify = useNotificationPrefs();
+  const setNotify = useSetNotificationPref();
+  const [choosing, setChoosing] = useState<NotifyCategory | null>(null);
+  const picked = NOTIFY.find((n) => n.key === choosing);
+
+  const choose = async (category: NotifyCategory, channel: Channel) => {
+    setChoosing(null);
+    setNotify.mutate({ category, channel }, { onError: fail });
+    if ((channel === 'push' || channel === 'both') && (await registerForPush()) === 'denied') {
+      toast('Notifications are off for SplitWiser. Turn them on in your phone’s settings to get push alerts.');
+    }
+  };
 
   const toggleAppLock = async (on: boolean) => {
     if (!on) {
@@ -62,17 +86,33 @@ export default function Settings() {
         </Glass>
       </View>
 
-      <ListGroup title="Notifications" footer="Choose what SplitWiser tells you about. Alerts arrive on this phone once notifications are switched on for the app.">
+      <ListGroup title="Notifications" footer="Pick how you hear about each thing: a push notification on this phone, an email, both, or nothing. You’re never notified about things you did yourself.">
         {NOTIFY.map((n) => (
           <ListItem
             key={n.key}
             left={<Tile icon={n.icon} />}
             title={n.title}
-            subtitle={n.subtitle}
-            right={<Switch label={n.title} value={prefs.notify[n.key]} onValueChange={(v) => set('notify', n.key, v)} />}
+            subtitle={n.about}
+            right={
+              <T variant="label" tone={notify.data?.[n.key] === 'off' ? 'faint' : 'accent'}>
+                {channelLabel(notify.data?.[n.key])}
+              </T>
+            }
+            chevron
+            onPress={() => notify.data && setChoosing(n.key)}
           />
         ))}
       </ListGroup>
+      <ActionSheet
+        visible={!!choosing}
+        title={picked ? `${picked.title}: ${picked.about.charAt(0).toLowerCase()}${picked.about.slice(1)}` : undefined}
+        actions={CHANNELS.map((c) => ({
+          label: notify.data && choosing && notify.data[choosing] === c.value ? `${c.label}  ✓` : c.label,
+          icon: c.icon,
+          onPress: () => choosing && choose(choosing, c.value),
+        }))}
+        onClose={() => setChoosing(null)}
+      />
 
       <ListGroup title="Privacy">
         {Platform.OS !== 'web' ? (
@@ -100,7 +140,9 @@ export default function Settings() {
       <ListGroup title="Friends & data">
         <ListItem left={<Tile icon="contacts-outline" />} title="Sync contacts" subtitle="Find friends from your phone’s contacts" chevron onPress={() => router.push('/contacts')} />
         <ListItem left={<Tile icon="import" />} title="Import from other apps" subtitle="Bring your groups over from Splitwise" chevron onPress={() => router.push('/import')} />
-        <ListItem left={<Tile icon="database-cog-outline" />} title="Server" subtitle="The Supabase project this app uses" chevron onPress={() => router.push('/backend')} />
+        {!backendLocked && (
+          <ListItem left={<Tile icon="database-cog-outline" />} title="Server" subtitle="The Supabase project this app uses" chevron onPress={() => router.push('/backend')} />
+        )}
       </ListGroup>
 
       <ListGroup title="Account" footer="SplitWiser works on one device at a time. Signing in on another phone signs you out here.">
@@ -108,7 +150,7 @@ export default function Settings() {
           left={<Tile icon="logout" />}
           title="Log out"
           onPress={async () => {
-            if (await confirm({ title: 'Log out?', confirmLabel: 'Log out', destructive: true })) supabase.auth.signOut();
+            if (await confirm({ title: 'Log out?', confirmLabel: 'Log out', destructive: true })) signOut();
           }}
         />
         <ListItem

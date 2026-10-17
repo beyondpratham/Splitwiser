@@ -95,3 +95,10 @@ render(foreground, 'assets/android-icon-foreground.png', 1024);
 render(androidBg, 'assets/android-icon-background.png', 1024);
 render(monochrome, 'assets/android-icon-monochrome.png', 1024);
 render(splash, 'assets/favicon.png', 64);
+
+// Android status-bar notification icon: white coin with the "$" cut out, on transparency.
+const notification = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs><mask id="cut"><rect width="1024" height="1024" fill="#fff"/>${coin({ fill: '#fff', ink: '#000' }).replace(/<circle[^>]*\/>/, '')}</mask></defs>
+  <g transform="translate(512 512) scale(1.5) translate(-512 -512)"><circle cx="512" cy="512" r="${R}" fill="#FFFFFF" mask="url(#cut)"/></g>
+</svg>`;
+render(notification, 'assets/notification-icon.png', 96);
