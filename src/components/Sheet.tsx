@@ -1,18 +1,22 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Button, Text } from 'react-native-paper';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { motion, space, useTheme } from '@/theme';
+import { Button, haptic } from './Controls';
+import { Icon, type IconName } from './Icon';
+import { T } from './Text';
 
 const SheetContext = createContext<{ close: () => void }>({ close: () => {} });
 
 /** Inside a Sheet: animate it closed (then the parent's onClose runs). */
 export const useSheet = () => useContext(SheetContext);
 
-/** Material 3 modal bottom sheet with drag-to-dismiss. */
+/** Frosted-glass bottom sheet with drag-to-dismiss. */
 export function Sheet({
   visible,
   title,
@@ -36,15 +40,17 @@ export function Sheet({
 
   const open = useCallback(() => {
     offset.set(height);
-    offset.set(withSpring(0, motion.standard));
+    offset.set(withSpring(0, motion.smooth));
     scrim.set(withTiming(1, { duration: 250 }));
   }, [height, offset, scrim]);
 
   const close = useCallback(() => {
     scrim.set(withTiming(0, { duration: 200 }));
-    offset.set(withTiming(height, { duration: 220, easing: Easing.in(Easing.cubic) }, (done) => {
-      if (done) scheduleOnRN(onClose);
-    }));
+    offset.set(
+      withTiming(height, { duration: 220, easing: Easing.in(Easing.cubic) }, (done) => {
+        if (done) scheduleOnRN(onClose);
+      }),
+    );
   }, [height, offset, scrim, onClose]);
 
   useEffect(() => {
@@ -58,11 +64,13 @@ export function Sheet({
     .onEnd((e) => {
       if (offset.get() > 140 || e.velocityY > 900) {
         scrim.set(withTiming(0, { duration: 200 }));
-        offset.set(withTiming(height, { duration: 200 }, (done) => {
-          if (done) scheduleOnRN(onClose);
-        }));
+        offset.set(
+          withTiming(height, { duration: 200 }, (done) => {
+            if (done) scheduleOnRN(onClose);
+          }),
+        );
       } else {
-        offset.set(withSpring(0, motion.fast));
+        offset.set(withSpring(0, motion.snappy));
       }
     });
 
@@ -73,31 +81,30 @@ export function Sheet({
     <Modal visible={visible} transparent statusBarTranslucent navigationBarTranslucent animationType="none" onRequestClose={close}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SheetContext.Provider value={{ close }}>
-          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.colors.backdrop }, scrimStyle]}>
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: t.scrim }, scrimStyle]}>
             <Pressable style={{ flex: 1 }} onPress={close} accessibilityLabel="Close sheet" />
           </Animated.View>
           <Animated.View
             style={[
               styles.sheet,
-              { backgroundColor: t.colors.surfaceContainerLow, maxHeight: height * 0.88, paddingBottom: insets.bottom + space.lg },
+              { maxHeight: height * 0.88, paddingBottom: insets.bottom + space.lg, borderColor: t.rimTop, boxShadow: `0px -12px 40px -16px ${t.drop}` },
               sheetStyle,
             ]}
           >
+            {Platform.OS !== 'android' && <BlurView intensity={70} tint={t.blurTint} style={StyleSheet.absoluteFill} />}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: Platform.OS === 'android' ? t.solid : t.glassStrong }]} />
+            <LinearGradient pointerEvents="none" colors={[t.sheen, 'transparent']} locations={[0, 0.12]} style={StyleSheet.absoluteFill} />
             <GestureDetector gesture={drag}>
               <View collapsable={false}>
                 <View style={styles.handleArea}>
-                  <View style={[styles.handle, { backgroundColor: t.colors.onSurfaceVariant }]} />
+                  <View style={[styles.handle, { backgroundColor: t.inkFaint }]} />
                 </View>
                 {(title || action) && (
                   <View style={styles.header}>
-                    <Text variant="titleLarge" style={{ flex: 1, color: t.colors.onSurface }}>
+                    <T variant="heading" style={{ flex: 1 }}>
                       {title}
-                    </Text>
-                    {action && (
-                      <Button mode="contained" onPress={action.onPress} disabled={action.disabled} compact style={{ paddingHorizontal: space.sm }}>
-                        {action.label}
-                      </Button>
-                    )}
+                    </T>
+                    {action && <Button title={action.label} size="sm" onPress={action.onPress} disabled={action.disabled} />}
                   </View>
                 )}
               </View>
@@ -116,16 +123,62 @@ export function Sheet({
   );
 }
 
+export interface SheetAction {
+  label: string;
+  icon?: IconName;
+  destructive?: boolean;
+  onPress: () => void;
+}
+
+/** A sheet of actions (used for overflow menus). */
+export function ActionSheet({ visible, title, actions, onClose }: { visible: boolean; title?: string; actions: SheetAction[]; onClose: () => void }) {
+  return (
+    <Sheet visible={visible} title={title} onClose={onClose}>
+      <ActionList actions={actions} />
+    </Sheet>
+  );
+}
+
+function ActionList({ actions }: { actions: SheetAction[] }) {
+  const t = useTheme();
+  const { close } = useSheet();
+  return (
+    <View style={{ paddingHorizontal: space.lg, gap: space.sm, paddingBottom: space.sm }}>
+      {actions.map((a) => (
+        <Pressable
+          key={a.label}
+          accessibilityRole="button"
+          accessibilityLabel={a.label}
+          onPress={() => {
+            haptic.tap();
+            close();
+            setTimeout(a.onPress, 230);
+          }}
+          style={({ pressed }) => [styles.action, { backgroundColor: pressed ? t.glassPressed : t.glassTint, borderColor: t.rimTop }]}
+        >
+          {a.icon && <Icon name={a.icon} size={22} color={a.destructive ? t.danger : t.ink} />}
+          <T variant="bodyStrong" tone={a.destructive ? 'danger' : 'ink'}>
+            {a.label}
+          </T>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    borderTopWidth: StyleSheet.hairlineWidth * 2,
   },
-  handleArea: { alignItems: 'center', paddingTop: 16, paddingBottom: 12 },
-  handle: { width: 32, height: 4, borderRadius: 2, opacity: 0.4 },
+  handleArea: { alignItems: 'center', paddingTop: 12, paddingBottom: 10 },
+  handle: { width: 38, height: 5, borderRadius: 3, opacity: 0.6 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xl, paddingBottom: space.md, gap: space.md },
+  action: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, height: 56, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
 });

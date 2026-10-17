@@ -1,22 +1,12 @@
-import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { Children, Fragment, isValidElement, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Text } from 'react-native-paper';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { hexAlpha, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
+import { Glass } from './Glass';
 import { Icon } from './Icon';
+import { T } from './Text';
 
-type Position = 'single' | 'first' | 'middle' | 'last';
-
-const OUTER = 20;
-const INNER = 4;
-
-function corners(position: Position) {
-  const top = position === 'single' || position === 'first' ? OUTER : INNER;
-  const bottom = position === 'single' || position === 'last' ? OUTER : INNER;
-  return { borderTopLeftRadius: top, borderTopRightRadius: top, borderBottomLeftRadius: bottom, borderBottomRightRadius: bottom };
-}
-
-/** Material 3 expressive grouped list: segmented rounded container with small gaps. */
+/** A glass pane holding rows separated by hairlines, with an optional small heading. */
 export function ListGroup({
   title,
   footer,
@@ -30,42 +20,41 @@ export function ListGroup({
   action?: ReactNode;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
-  /** stagger order for the entrance animation */
   animateIndex?: number;
 }) {
   const t = useTheme();
-  const items = Children.toArray(children).filter(isValidElement) as ReactElement<{ position?: Position }>[];
+  const items = Children.toArray(children).filter(isValidElement);
   const body = (
     <View style={[styles.group, style]}>
       {(title || action) && (
         <View style={styles.titleRow}>
           {title ? (
-            <Text variant="titleSmall" style={{ color: t.colors.primary }}>
+            <T variant="overline" tone="dim">
               {title}
-            </Text>
+            </T>
           ) : (
             <View />
           )}
           {action}
         </View>
       )}
-      <View style={{ gap: 2 }}>
-        {items.map((child, i) =>
-          cloneElement(child, {
-            key: child.key ?? i,
-            position: items.length === 1 ? 'single' : i === 0 ? 'first' : i === items.length - 1 ? 'last' : 'middle',
-          }),
-        )}
-      </View>
+      <Glass variant="pane" radius={26}>
+        {items.map((child, i) => (
+          <Fragment key={child.key ?? i}>
+            {child}
+            {i < items.length - 1 && <View style={[styles.sep, { backgroundColor: t.line }]} />}
+          </Fragment>
+        ))}
+      </Glass>
       {footer && (
-        <Text variant="bodySmall" style={[styles.footer, { color: t.colors.onSurfaceVariant }]}>
+        <T variant="caption" tone="dim" style={styles.footer}>
           {footer}
-        </Text>
+        </T>
       )}
     </View>
   );
   if (animateIndex == null) return body;
-  return <Animated.View entering={FadeInDown.delay(Math.min(animateIndex, 8) * 45).springify().damping(18)}>{body}</Animated.View>;
+  return <Animated.View entering={FadeInDown.delay(Math.min(animateIndex, 8) * 50).springify().damping(18)}>{body}</Animated.View>;
 }
 
 export function ListItem({
@@ -79,8 +68,6 @@ export function ListItem({
   chevron,
   tone = 'default',
   disabled,
-  position = 'single',
-  children,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -90,58 +77,54 @@ export function ListItem({
   onPress?: () => void;
   onLongPress?: () => void;
   chevron?: boolean;
-  tone?: 'default' | 'primary' | 'error';
+  tone?: 'default' | 'accent' | 'danger';
   disabled?: boolean;
-  position?: Position;
-  children?: ReactNode;
 }) {
   const t = useTheme();
-  const color = tone === 'error' ? t.colors.error : tone === 'primary' ? t.colors.primary : t.colors.onSurface;
+  const color = tone === 'danger' ? 'danger' : tone === 'accent' ? 'accent' : 'ink';
   return (
-    <View style={[corners(position), { overflow: 'hidden', backgroundColor: t.colors.surfaceContainerLow }]}>
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        disabled={disabled || (!onPress && !onLongPress)}
-        android_ripple={{ color: hexAlpha(t.colors.onSurface, 0.12) }}
-        style={({ pressed }) => [styles.row, disabled && { opacity: 0.38 }, pressed && process.env.EXPO_OS !== 'android' && { backgroundColor: hexAlpha(t.colors.onSurface, 0.08) }]}
-      >
-        {left && <View style={styles.left}>{left}</View>}
-        <View style={styles.body}>
-          {typeof title === 'string' ? (
-            <Text variant="bodyLarge" style={{ color }} numberOfLines={1}>
-              {title}
-            </Text>
-          ) : (
-            title
-          )}
-          {subtitle != null &&
-            (typeof subtitle === 'string' ? (
-              <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }} numberOfLines={2}>
-                {subtitle}
-              </Text>
-            ) : (
-              subtitle
-            ))}
-        </View>
-        {detail != null && (
-          <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, maxWidth: '45%' }} numberOfLines={1}>
-            {detail}
-          </Text>
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      disabled={disabled || (!onPress && !onLongPress)}
+      accessibilityRole={onPress ? 'button' : undefined}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: t.glassPressed }, disabled && { opacity: 0.4 }]}
+    >
+      {left && <View style={styles.left}>{left}</View>}
+      <View style={styles.body}>
+        {typeof title === 'string' ? (
+          <T variant="bodyStrong" tone={color} numberOfLines={1}>
+            {title}
+          </T>
+        ) : (
+          title
         )}
-        {right}
-        {chevron && <Icon name="chevron-right" size={22} color={t.colors.onSurfaceVariant} />}
-      </Pressable>
-      {children}
-    </View>
+        {subtitle != null &&
+          (typeof subtitle === 'string' ? (
+            <T variant="caption" tone="dim" numberOfLines={2}>
+              {subtitle}
+            </T>
+          ) : (
+            subtitle
+          ))}
+      </View>
+      {detail != null && (
+        <T variant="label" tone="dim" numberOfLines={1} style={{ maxWidth: '45%' }}>
+          {detail}
+        </T>
+      )}
+      {right}
+      {chevron && <Icon name="chevron-right" size={20} color={t.inkFaint} />}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   group: { marginHorizontal: space.lg, marginBottom: space.xl },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.xs, marginBottom: space.sm, minHeight: 24 },
-  footer: { marginTop: space.sm, paddingHorizontal: space.lg },
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingHorizontal: space.lg, paddingVertical: space.md, gap: space.lg },
-  left: { minWidth: 40, alignItems: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.sm, marginBottom: space.sm, minHeight: 22 },
+  sep: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
+  footer: { marginTop: space.sm, paddingHorizontal: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingHorizontal: space.lg, paddingVertical: space.md, gap: space.md },
+  left: { minWidth: 42, alignItems: 'center' },
   body: { flex: 1, gap: 2 },
 });
