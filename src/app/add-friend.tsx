@@ -1,24 +1,28 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Field, haptic } from '@/components/Controls';
 import { useFeedback } from '@/components/Feedback';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { Page } from '@/components/Page';
+import { parseProfileQr } from '@/components/QrCode';
+import { QrScanner } from '@/components/QrScanner';
 import { T } from '@/components/Text';
-import { useAddFriend } from '@/lib/api';
+import { useAddFriend, useAddFriendByPhone } from '@/lib/api';
 import { friendlyError } from '@/lib/supabase';
 import { space, useTheme } from '@/theme';
 
 export default function AddFriend() {
   const t = useTheme();
   const add = useAddFriend();
-  const { toast } = useFeedback();
+  const addByPhone = useAddFriendByPhone();
+  const { toast, fail } = useFeedback();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const valid = /^\S+@\S+\.\S+$/.test(email.trim());
 
   async function submit() {
@@ -34,20 +38,60 @@ export default function AddFriend() {
     }
   }
 
+  async function onScan(data: string) {
+    setScanning(false);
+    const person = parseProfileQr(data);
+    if (!person) {
+      haptic.error();
+      toast('That isn’t a SplitWiser QR code.');
+      return;
+    }
+    try {
+      if (person.email) await add.mutateAsync({ email: person.email, name: person.name });
+      else if (person.phone) await addByPhone.mutateAsync(person.phone);
+      haptic.success();
+      toast(`${person.name ?? 'Friend'} added`);
+      router.back();
+    } catch (e) {
+      fail(e);
+    }
+  }
+
   return (
     <Page title="Add friend" variant="dialog" form confirm={{ label: 'Add', onPress: submit, disabled: !valid, loading: add.isPending }}>
-      <View style={{ alignItems: 'center', marginBottom: space.xl, gap: space.md, paddingHorizontal: space.xl }}>
+      <View style={styles.hero}>
         <Animated.View entering={ZoomIn.springify().damping(12)}>
-          <Glass variant="pill" tint={t.accentSoft} contentStyle={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
+          <Glass tint={t.accentSoft} contentStyle={styles.heroIcon}>
             <Icon name="account-plus-outline" size={40} color={t.accentText} />
           </Glass>
         </Animated.View>
-        <T variant="body" tone="dim" style={{ textAlign: 'center' }}>
-          If they don’t have an account yet, they’ll see all shared expenses as soon as they sign up with this email.
-        </T>
       </View>
+
+      <View style={styles.section}>
+        <Glass variant="pane" onPress={() => setScanning(true)} accessibilityLabel="Scan a QR code" contentStyle={styles.scan}>
+          <View style={[styles.scanIcon, { backgroundColor: t.accentSoft }]}>
+            <Icon name="qrcode-scan" size={24} color={t.accentText} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <T variant="subhead">Scan a QR code</T>
+            <T variant="caption" tone="dim">
+              Fastest — ask them to open Account → My QR
+            </T>
+          </View>
+          <Icon name="chevron-right" size={22} color={t.inkFaint} />
+        </Glass>
+      </View>
+
+      <View style={styles.divider}>
+        <View style={[styles.line, { backgroundColor: t.line }]} />
+        <T variant="caption" tone="faint">
+          or add by email
+        </T>
+        <View style={[styles.line, { backgroundColor: t.line }]} />
+      </View>
+
       <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
-        <Field label="Name" placeholder="Their name" value={name} onChangeText={setName} autoFocus icon="account-outline" />
+        <Field label="Name" placeholder="Their name" value={name} onChangeText={setName} icon="account-outline" />
         <Field
           label="Email"
           placeholder="name@example.com"
@@ -59,8 +103,20 @@ export default function AddFriend() {
           onSubmitEditing={() => valid && submit()}
           icon="email-outline"
           error={error}
+          hint="If they’re not on SplitWiser yet, they’ll see shared expenses as soon as they sign up with this email."
         />
       </View>
+      <QrScanner visible={scanning} onClose={() => setScanning(false)} onScan={onScan} />
     </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: { alignItems: 'center', marginBottom: space.xl },
+  heroIcon: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  section: { marginHorizontal: space.lg, marginBottom: space.lg },
+  scan: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
+  scanIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.xl, marginBottom: space.lg },
+  line: { flex: 1, height: StyleSheet.hairlineWidth },
+});

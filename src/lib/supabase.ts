@@ -91,5 +91,8 @@ export function friendlyError(e: unknown): string {
   if (/Invalid login credentials/i.test(msg)) return 'That email and password don’t match.';
   if (/User already registered/i.test(msg)) return 'An account with that email already exists.';
   if (/Network request failed|fetch failed/i.test(msg)) return 'You appear to be offline.';
+  if (/profiles_phone_key/i.test(msg)) return 'That phone number is already linked to another account.';
+  if (/profiles_phone_format/i.test(msg)) return 'Enter the phone number with its country code, like +91 98765 43210.';
+  if (/profiles_avatar_size/i.test(msg)) return 'That photo is too large. Try another one.';
   return msg.charAt(0).toUpperCase() + msg.slice(1);
 }

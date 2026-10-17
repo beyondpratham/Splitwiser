@@ -293,7 +293,7 @@ export const useDeleteGroup = () =>
   useAction((id: string) => unwrap<null>(supabase.from('groups').delete().eq('id', id)));
 
 export const useUpdateProfile = () =>
-  useAction(({ id, ...patch }: Partial<Pick<Profile, 'name' | 'avatar_color' | 'default_currency'>> & { id: string }) =>
+  useAction(({ id, ...patch }: Partial<Pick<Profile, 'name' | 'avatar_color' | 'default_currency' | 'phone' | 'avatar'>> & { id: string }) =>
     unwrap<null>(supabase.from('profiles').update(patch).eq('id', id)),
   );
 
@@ -306,3 +306,19 @@ export const useDeleteAccount = () =>
       await supabase.auth.signOut({ scope: 'local' });
     },
   });
+
+export interface ContactMatch {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  avatar: string | null;
+  avatar_color: string;
+}
+
+/** Which of these emails / numbers already use SplitWiser (only matches come back). */
+export const findUsersByContacts = (emails: string[], phones: string[]) =>
+  unwrap<ContactMatch[]>(supabase.rpc('find_users_by_contacts', { emails, phones }));
+
+export const useAddFriendByPhone = () =>
+  useAction((phone: string) => unwrap<string>(supabase.rpc('add_friend_by_phone', { friend_phone: phone })));
