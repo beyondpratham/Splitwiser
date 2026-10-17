@@ -125,6 +125,23 @@ await run('Friends home, filters and a friend', 'light', async (page, shot) => {
   await shot('group-balances');
 });
 
+await run('Forgot password', 'light', async (page, shot) => {
+  await text(page, 'Use local server').waitFor();
+  await button(page, 'Use local server').click();
+  await visible(page.getByPlaceholder('you@example.com')).fill('priya@demo.app');
+  await button(page, 'Forgot password?').click();
+  await text(page, 'Forgot your password?').waitFor();
+  await shot('forgot-password');
+  await button(page, 'Send code').click();
+  await text(page, 'Check your email').waitFor();
+  const { code } = await (await fetch('http://localhost:54321/auth/v1/__dev/recovery-code?email=priya@demo.app')).json();
+  await visible(page.getByPlaceholder('6-digit code')).fill(code);
+  await visible(page.getByPlaceholder('At least 6 characters')).fill('fresh-pass-1');
+  await shot('reset-code');
+  await button(page, 'Set new password').click();
+  await text(page, 'Outstanding').waitFor(); // signed straight in
+});
+
 await run('Opening animation', 'light', async (page) => {
   // frames of the logo tearing open (the flow starts right after the page loads)
   for (const ms of [0, 450, 350, 250, 250]) {
@@ -223,6 +240,15 @@ await run('Activity and account sections', 'light', async (page, shot) => {
   await text(page, 'Settings').click();
   await text(page, 'Appearance').waitFor();
   await shot('settings');
+  await text(page, 'Payments').click();
+  await text(page, 'Push and email  ✓').waitFor(); // payments default to both
+  await shot('settings-notify-choice');
+  await page.getByText('Email', { exact: true }).filter({ visible: true }).last().click(); // the option in the sheet
+  await page.getByText('Push and email  ✓').waitFor({ state: 'hidden' });
+  await page.waitForTimeout(800); // let the server confirm
+  await text(page, 'Payments').click();
+  await text(page, 'Email  ✓').waitFor();
+  await page.getByLabel('Close sheet', { exact: true }).filter({ visible: true }).last().click({ position: { x: 20, y: 20 } }); // tap above the sheet
   await page.mouse.wheel(0, 1400);
   await shot('settings-more');
   await page.mouse.wheel(0, -2000);
@@ -243,9 +269,11 @@ await run('Activity and account sections', 'light', async (page, shot) => {
   await shot('help');
   await label(page, 'Back').click();
   await button(page, 'Buy me a coffee').click();
-  await text(page, 'Enjoying SplitWiser?').waitFor();
+  await button(page, 'Copy UPI ID').waitFor();
+  await text(page, 'prathamrd28-2@okicici').waitFor();
   await shot('coffee');
-  await label(page, 'Close').click();
+  await page.getByLabel('Close sheet', { exact: true }).filter({ visible: true }).last().click({ position: { x: 20, y: 20 } }); // tap above the sheet
+  await button(page, 'Copy UPI ID').waitFor({ state: 'hidden' });
   await button(page, 'Spending insights').click();
   await text(page, 'By category').waitFor();
   await page.waitForTimeout(800);
