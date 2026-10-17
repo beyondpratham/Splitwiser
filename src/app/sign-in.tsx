@@ -6,6 +6,7 @@ import { Button, Field, haptic, IconButton, Segmented } from '@/components/Contr
 import { Glass } from '@/components/Glass';
 import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
+import { claimThisDevice } from '@/lib/device';
 import { friendlyError, supabase } from '@/lib/supabase';
 import { space } from '@/theme';
 
@@ -34,6 +35,8 @@ export default function SignIn() {
         if (error) throw error;
         if (!data.session) setNotice('Check your inbox to confirm your email, then sign in.');
       }
+      // one device per account: this one becomes the active device
+      await claimThisDevice().catch(() => {});
       haptic.success();
     } catch (e) {
       haptic.error();
@@ -110,7 +113,7 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: space.lg, paddingHorizontal: space.xl, marginTop: space.lg, marginBottom: space.xxl },
-  logo: { width: 100, height: 100, borderRadius: 28 },
+  logo: { width: 100, height: 100, borderRadius: 24 },
   section: { marginHorizontal: space.lg },
   card: { padding: space.lg, gap: space.lg },
 });

@@ -5,16 +5,43 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { FeedbackProvider } from '@/components/Feedback';
+import { AppLock } from '@/components/AppLock';
+import { FeedbackProvider, useFeedback } from '@/components/Feedback';
 import { Loading } from '@/components/ui';
 import { useRealtimeSync } from '@/lib/api';
 import { AuthProvider, useAuth } from '@/lib/auth';
-import { friendlyError } from '@/lib/supabase';
+import { isActiveDevice } from '@/lib/device';
+import { PrefsProvider } from '@/lib/prefs';
+import { friendlyError, supabase } from '@/lib/supabase';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** One device per account: if someone signs in elsewhere, this device signs out. */
+function useSingleDevice(signedIn: boolean) {
+  const { toast } = useFeedback();
+  useEffect(() => {
+    if (!signedIn) return;
+    let alive = true;
+    const check = async () => {
+      if (alive && !(await isActiveDevice())) {
+        toast('You signed in on another device, so SplitWiser signed out here.');
+        await supabase.auth.signOut({ scope: 'local' });
+      }
+    };
+    const timer = setInterval(check, 30_000);
+    const sub = AppState.addEventListener('change', (state) => state === 'active' && check());
+    check();
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [signedIn, toast]);
+}
 
 function RootStack() {
   const { session, ready, configured } = useAuth();
@@ -22,6 +49,7 @@ function RootStack() {
   const qc = useQueryClient();
   const userId = session?.user.id;
   useRealtimeSync();
+  useSingleDevice(!!session);
 
   // Never show one account's cached data to another.
   useEffect(() => {
@@ -57,6 +85,8 @@ function RootStack() {
           <Stack.Screen name="profile" />
           <Stack.Screen name="settings" />
           <Stack.Screen name="help" />
+          <Stack.Screen name="contacts" />
+          <Stack.Screen name="import" />
           <Stack.Screen name="coffee" options={dialog} />
           <Stack.Screen name="backend" options={dialog} />
           <Stack.Screen name="add-expense" options={dialog} />
@@ -84,13 +114,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <ThemeProvider>
+          <PrefsProvider>
           <QueryClientProvider client={client}>
             <AuthProvider>
               <FeedbackProvider describeError={friendlyError}>
                 <RootStack />
+                <AppLock />
               </FeedbackProvider>
             </AuthProvider>
           </QueryClientProvider>
+          </PrefsProvider>
         </ThemeProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
