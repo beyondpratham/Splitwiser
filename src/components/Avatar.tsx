@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { categoryById, PAYMENT_CATEGORY } from '@/lib/categories';
-import { hexAlpha, shape, useTheme } from '@/theme';
+import { font, useTheme, withAlpha } from '@/theme';
+import { Glass } from './Glass';
 import { Icon } from './Icon';
 
 export function initials(name: string) {
@@ -8,28 +9,33 @@ export function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
 }
 
-export function Avatar({ name, color, size = 40 }: { name: string; color: string; size?: number }) {
+export function Avatar({ name, color, size = 42 }: { name: string; color: string; size?: number }) {
   return (
-    <View style={[styles.center, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
-      <Text style={[styles.initials, { fontSize: size * 0.38 }]} allowFontScaling={false}>
+    <View
+      style={[
+        styles.center,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: color, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)' },
+      ]}
+    >
+      <Text style={[styles.initials, { fontSize: size * 0.36 }]} allowFontScaling={false}>
         {initials(name)}
       </Text>
     </View>
   );
 }
 
-export function EmojiTile({ emoji, size = 48 }: { emoji: string; size?: number }) {
-  const t = useTheme();
+/** Group icon: an emoji on a small glass squircle. */
+export function EmojiTile({ emoji, size = 46 }: { emoji: string; size?: number }) {
   return (
-    <View style={[styles.center, { width: size, height: size, borderRadius: size * 0.32, backgroundColor: t.colors.secondaryContainer }]}>
+    <Glass radius={size * 0.32} contentStyle={[styles.center, { width: size, height: size }]}>
       <Text style={{ fontSize: size * 0.5 }} allowFontScaling={false}>
         {emoji}
       </Text>
-    </View>
+    </Glass>
   );
 }
 
-/** Tonal category tile: tinted container with the category's color for the glyph. */
+/** Category icon on a tinted squircle. */
 export function CategoryTile({ category, payment, size = 44 }: { category: string; payment?: boolean; size?: number }) {
   const t = useTheme();
   const c = payment ? PAYMENT_CATEGORY : categoryById(category);
@@ -37,15 +43,22 @@ export function CategoryTile({ category, payment, size = 44 }: { category: strin
     <View
       style={[
         styles.center,
-        { width: size, height: size, borderRadius: Math.min(shape.md, size * 0.3), backgroundColor: hexAlpha(c.color, t.dark ? 0.24 : 0.16) },
+        {
+          width: size,
+          height: size,
+          borderRadius: size * 0.32,
+          backgroundColor: withAlpha(c.color, t.dark ? 0.22 : 0.16),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: withAlpha(c.color, 0.25),
+        },
       ]}
     >
-      <Icon name={c.icon} size={size * 0.52} color={c.color} />
+      <Icon name={c.icon} size={size * 0.5} color={c.color} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
-  initials: { color: '#FFFFFF', fontWeight: '600', letterSpacing: 0.3 },
+  initials: { color: '#FFFFFF', fontFamily: font.semibold, letterSpacing: 0.3 },
 });

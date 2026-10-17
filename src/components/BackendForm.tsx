@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 import { useAuth } from '@/lib/auth';
 import { envConfig, testConfig } from '@/lib/supabase';
 import { space, useTheme } from '@/theme';
-import { haptic } from './ui';
+import { Button, Field, haptic } from './Controls';
+import { Glass } from './Glass';
+import { T } from './Text';
 
 const STEPS = [
   'Create a free project at supabase.com.',
-  'In the project’s SQL editor, run the file supabase/migrations/…_init.sql from this repo (or run npm run db:push).',
+  'In the project’s SQL editor, run the files in supabase/migrations from this repo (or run npm run db:push).',
   'Copy the Project URL and the publishable key from Project Settings → API.',
 ];
 
@@ -19,8 +20,9 @@ export const LOCAL_BACKEND = { url: 'http://localhost:54321', key: 'local-develo
 export function BackendForm({ onDone }: { onDone?: () => void }) {
   const t = useTheme();
   const { setBackend } = useAuth();
-  const [url, setUrl] = useState(envConfig()?.url ?? '');
-  const [key, setKey] = useState(envConfig()?.key ?? '');
+  const env = envConfig();
+  const [url, setUrl] = useState(env?.url ?? '');
+  const [key, setKey] = useState(env?.key ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,70 +47,51 @@ export function BackendForm({ onDone }: { onDone?: () => void }) {
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.local, { backgroundColor: t.colors.tertiaryContainer }]}>
-        <Text variant="titleMedium" style={{ color: t.colors.onTertiaryContainer }}>
-          Trying it on this computer?
-        </Text>
-        <Text variant="bodyMedium" style={{ color: t.colors.onTertiaryContainer }}>
-          Run npm run local:backend, then connect to it here. Demo login: alex@demo.app / demo1234.
-        </Text>
-        <Button mode="contained-tonal" icon="laptop" onPress={() => connect(LOCAL_BACKEND)} disabled={busy} style={{ alignSelf: 'flex-start', marginTop: space.xs }}>
-          Use local server
-        </Button>
-      </View>
-      <Text variant="titleSmall" style={{ color: t.colors.primary, marginTop: space.sm, marginLeft: space.xs }}>
-        Or connect your own Supabase project
-      </Text>
-      <View style={[styles.steps, { backgroundColor: t.colors.surfaceContainerLow }]}>
+      {env && (
+        <Glass variant="pane" tint={t.accentSoft} contentStyle={styles.card}>
+          <T variant="subhead">Your SplitWiser server</T>
+          <T variant="caption" tone="dim" numberOfLines={1}>
+            {env.url}
+          </T>
+          <Button title="Connect" icon="connection" onPress={() => connect(env)} loading={busy} style={{ alignSelf: 'flex-start', marginTop: space.xs }} />
+        </Glass>
+      )}
+
+      <Glass variant="pane" contentStyle={styles.card}>
+        <T variant="subhead">Trying it on this computer?</T>
+        <T variant="caption" tone="dim">
+          Run npm run local:backend, then connect to it. Demo login: alex@demo.app / demo1234.
+        </T>
+        <Button title="Use local server" icon="laptop" variant="glass" size="sm" onPress={() => connect(LOCAL_BACKEND)} disabled={busy} style={{ alignSelf: 'flex-start', marginTop: space.xs }} />
+      </Glass>
+
+      <T variant="overline" tone="dim" style={{ marginTop: space.sm, marginLeft: space.sm }}>
+        Or connect another Supabase project
+      </T>
+      <Glass variant="pane" contentStyle={[styles.card, { gap: space.md }]}>
         {STEPS.map((s, i) => (
           <View key={i} style={styles.step}>
-            <View style={[styles.num, { backgroundColor: t.colors.primaryContainer }]}>
-              <Text variant="labelLarge" style={{ color: t.colors.onPrimaryContainer }}>
+            <View style={[styles.num, { backgroundColor: t.accentSoft }]}>
+              <T variant="label" tone="accent">
                 {i + 1}
-              </Text>
+              </T>
             </View>
-            <Text variant="bodyMedium" style={{ flex: 1, color: t.colors.onSurface }}>
+            <T variant="caption" style={{ flex: 1 }}>
               {s}
-            </Text>
+            </T>
           </View>
         ))}
-      </View>
-      <TextInput
-        mode="outlined"
-        label="Project URL"
-        placeholder="https://abcd.supabase.co"
-        value={url}
-        onChangeText={setUrl}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-        left={<TextInput.Icon icon="web" />}
-      />
-      <TextInput
-        mode="outlined"
-        label="Publishable key"
-        value={key}
-        onChangeText={setKey}
-        autoCapitalize="none"
-        autoCorrect={false}
-        left={<TextInput.Icon icon="key-variant" />}
-      />
-      {error && (
-        <HelperText type="error" visible>
-          {error}
-        </HelperText>
-      )}
-      <Button mode="contained" icon="connection" onPress={() => connect()} loading={busy} disabled={!valid || busy} contentStyle={{ height: 52 }}>
-        Connect
-      </Button>
+      </Glass>
+      <Field label="Project URL" placeholder="https://abcd.supabase.co" value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" icon="web" />
+      <Field label="Publishable key" placeholder="sb_publishable_…" value={key} onChangeText={setKey} autoCapitalize="none" autoCorrect={false} icon="key-variant" error={error} />
+      <Button title="Connect" icon="connection" size="lg" onPress={() => connect()} loading={busy} disabled={!valid || busy} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: space.lg, gap: space.md },
-  local: { borderRadius: 24, padding: space.lg, gap: space.xs },
-  steps: { borderRadius: 24, padding: space.lg, gap: space.md, marginBottom: space.sm },
+  card: { padding: space.lg, gap: space.xs },
   step: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
-  num: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  num: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
 });

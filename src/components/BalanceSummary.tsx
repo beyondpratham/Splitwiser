@@ -1,73 +1,83 @@
 import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { entries, type CurrencyMap } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
 import { space, useTheme } from '@/theme';
+import { Glass } from './Glass';
 import { Icon } from './Icon';
+import { T } from './Text';
 import { AnimatedMoney } from './ui';
 
-/** Headline card: overall net balance plus the owed / owe split. */
+/** Headline pane: overall net balance plus what you're owed and what you owe. */
 export function BalanceSummary({ total, owedToMe, iOwe }: { total: CurrencyMap; owedToMe: CurrencyMap; iOwe: CurrencyMap }) {
   const t = useTheme();
   const net = entries(total);
   const primary = net[0];
   const positive = primary ? primary[1] > 0 : true;
-  const container = !primary ? t.colors.surfaceContainerHigh : positive ? t.colors.owedContainer : t.colors.oweContainer;
-  const onContainer = !primary ? t.colors.onSurface : positive ? t.colors.onOwedContainer : t.colors.onOweContainer;
 
   return (
-    <Animated.View entering={FadeInDown.springify().damping(18)} style={[styles.card, { backgroundColor: container }]}>
-      <Text variant="labelLarge" style={{ color: onContainer, opacity: 0.8 }}>
-        {!primary ? 'You’re all settled up' : positive ? 'Overall, you are owed' : 'Overall, you owe'}
-      </Text>
-      {primary ? (
-        <>
-          <AnimatedMoney amount={Math.abs(primary[1])} currency={primary[0]} style={[styles.amount, { color: onContainer }]} />
-          {net.slice(1).map(([cur, v]) => (
-            <Text key={cur} variant="titleMedium" style={{ color: onContainer, fontVariant: ['tabular-nums'] }}>
-              {v > 0 ? '+ ' : '− '}
-              {formatMoney(Math.abs(v), cur)}
-            </Text>
-          ))}
-        </>
-      ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
-          <Icon name="check-decagram" size={32} color={t.colors.primary} />
-          <Text variant="headlineSmall" style={{ color: onContainer }}>
-            Nothing to settle
-          </Text>
+    <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.wrap}>
+      <Glass variant="pane" contentStyle={styles.card}>
+        <T variant="label" tone="dim">
+          {!primary ? 'You’re all settled up' : positive ? 'Overall, you are owed' : 'Overall, you owe'}
+        </T>
+        {primary ? (
+          <>
+            <AnimatedMoney amount={Math.abs(primary[1])} currency={primary[0]} style={{ color: positive ? t.owed : t.owe, fontSize: 40, lineHeight: 48 }} />
+            {net.slice(1).map(([cur, v]) => (
+              <T key={cur} variant="subhead" numeric tone={v > 0 ? 'owed' : 'owe'}>
+                {v > 0 ? '+ ' : '− '}
+                {formatMoney(Math.abs(v), cur)}
+              </T>
+            ))}
+          </>
+        ) : (
+          <View style={styles.settled}>
+            <Icon name="check-decagram" size={30} color={t.accent} />
+            <T variant="title">Nothing to settle</T>
+          </View>
+        )}
+        <View style={styles.stats}>
+          <Stat label="You are owed" map={owedToMe} icon="arrow-bottom-left" tone="owed" />
+          <View style={[styles.divider, { backgroundColor: t.line }]} />
+          <Stat label="You owe" map={iOwe} icon="arrow-top-right" tone="owe" />
         </View>
-      )}
-      <View style={styles.chips}>
-        <Stat label="You are owed" map={owedToMe} icon="arrow-bottom-left" color={t.colors.owed} />
-        <Stat label="You owe" map={iOwe} icon="arrow-top-right" color={t.colors.owe} />
-      </View>
+      </Glass>
     </Animated.View>
   );
 }
 
-function Stat({ label, map, icon, color }: { label: string; map: CurrencyMap; icon: 'arrow-bottom-left' | 'arrow-top-right'; color: string }) {
+function Stat({ label, map, icon, tone }: { label: string; map: CurrencyMap; icon: 'arrow-bottom-left' | 'arrow-top-right'; tone: 'owed' | 'owe' }) {
   const t = useTheme();
   const list = entries(map);
   return (
-    <View style={[styles.stat, { backgroundColor: t.colors.surfaceContainerLowest }]}>
+    <View style={styles.stat}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <Icon name={icon} size={16} color={color} />
-        <Text variant="labelMedium" style={{ color: t.colors.onSurfaceVariant }}>
+        <Icon name={icon} size={15} color={tone === 'owed' ? t.owed : t.owe} />
+        <T variant="caption" tone="dim">
           {label}
-        </Text>
+        </T>
       </View>
-      <Text variant="titleMedium" numberOfLines={1} style={{ color: list.length ? color : t.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}>
-        {list.length === 0 ? '—' : list.slice(0, 2).map(([cur, v]) => formatMoney(Math.abs(v), cur)).join(' + ')}
-      </Text>
+      {list.length === 0 ? (
+        <T variant="subhead" tone="faint">
+          —
+        </T>
+      ) : (
+        list.slice(0, 3).map(([cur, v]) => (
+          <T key={cur} variant="subhead" numeric numberOfLines={1} adjustsFontSizeToFit tone={tone}>
+            {formatMoney(Math.abs(v), cur)}
+          </T>
+        ))
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: space.lg, marginBottom: space.xl, borderRadius: 28, padding: space.xl, gap: 2 },
-  amount: { fontSize: 44, lineHeight: 52, fontWeight: '600', letterSpacing: -0.5 },
-  chips: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
-  stat: { flex: 1, borderRadius: 16, paddingHorizontal: space.md, paddingVertical: space.md, gap: 2 },
+  wrap: { marginHorizontal: space.lg, marginBottom: space.xl },
+  card: { padding: space.xl, gap: 2 },
+  settled: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginVertical: space.sm },
+  stats: { flexDirection: 'row', marginTop: space.lg, alignItems: 'stretch' },
+  divider: { width: StyleSheet.hairlineWidth, marginHorizontal: space.lg },
+  stat: { flex: 1, gap: 2 },
 });

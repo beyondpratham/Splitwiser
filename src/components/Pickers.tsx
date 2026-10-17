@@ -1,19 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text as RNText, View } from 'react-native';
-import { Searchbar, Text } from 'react-native-paper';
 import { CATEGORIES } from '@/lib/categories';
 import { CURRENCIES } from '@/lib/currencies';
-import { hexAlpha, space, useTheme } from '@/theme';
+import { space, useTheme, withAlpha } from '@/theme';
+import { Field, haptic } from './Controls';
+import { Glass } from './Glass';
 import { Icon } from './Icon';
 import { ListGroup, ListItem } from './List';
 import { Sheet, useSheet } from './Sheet';
-import { haptic } from './ui';
+import { T } from './Text';
 
-interface PickerProps<T> {
+interface PickerProps<V> {
   visible: boolean;
-  value: T;
+  value: V;
   onClose: () => void;
-  onSelect: (v: T) => void;
+  onSelect: (v: V) => void;
 }
 
 export function CurrencyPicker(props: PickerProps<string>) {
@@ -34,15 +35,17 @@ function CurrencyList({ value, onSelect }: PickerProps<string>) {
   }, [q]);
   return (
     <>
-      <Searchbar value={q} onChangeText={setQ} placeholder="Search currencies" style={styles.search} mode="bar" />
+      <View style={{ paddingHorizontal: space.lg, marginBottom: space.lg }}>
+        <Field icon="magnify" placeholder="Search currencies" value={q} onChangeText={setQ} autoCorrect={false} />
+      </View>
       <ListGroup>
         {list.map((c) => (
           <ListItem
             key={c.code}
-            left={<RNText style={{ fontSize: 28 }}>{c.flag}</RNText>}
+            left={<RNText style={{ fontSize: 26 }}>{c.flag}</RNText>}
             title={c.code}
             subtitle={c.name}
-            right={c.code === value ? <Icon name="check" color={t.colors.primary} /> : undefined}
+            right={c.code === value ? <Icon name="check-circle" color={t.accent} /> : undefined}
             onPress={() => {
               haptic.tap();
               onSelect(c.code);
@@ -71,31 +74,34 @@ function CategoryGrid({ value, onSelect }: PickerProps<string>) {
     <>
       {groups.map((g) => (
         <View key={g} style={styles.catGroup}>
-          <Text variant="titleSmall" style={{ color: t.colors.primary, marginBottom: space.sm, marginLeft: space.xs }}>
+          <T variant="overline" tone="dim" style={{ marginBottom: space.sm, marginLeft: space.xs }}>
             {g}
-          </Text>
+          </T>
           <View style={styles.grid}>
             {CATEGORIES.filter((c) => c.group === g).map((c) => {
               const on = c.id === value;
               return (
-                <View key={c.id} style={[styles.catCell, { backgroundColor: on ? t.colors.secondaryContainer : t.colors.surfaceContainerHigh }]}>
-                  <Pressable
-                    android_ripple={{ color: hexAlpha(t.colors.onSurface, 0.12) }}
-                    style={styles.catInner}
-                    onPress={() => {
-                      haptic.tap();
-                      onSelect(c.id);
-                      close();
-                    }}
-                  >
-                    <View style={[styles.catIcon, { backgroundColor: hexAlpha(c.color, t.dark ? 0.26 : 0.18) }]}>
-                      <Icon name={c.icon} size={22} color={c.color} />
-                    </View>
-                    <Text variant="labelMedium" numberOfLines={1} style={{ color: on ? t.colors.onSecondaryContainer : t.colors.onSurface }}>
-                      {c.label}
-                    </Text>
-                  </Pressable>
-                </View>
+                <Glass
+                  key={c.id}
+                  radius={20}
+                  style={styles.catCell}
+                  tint={on ? t.accentSoft : undefined}
+                  onPress={() => {
+                    haptic.tap();
+                    onSelect(c.id);
+                    close();
+                  }}
+                  accessibilityLabel={c.label}
+                  accessibilityState={{ selected: on }}
+                  contentStyle={styles.catInner}
+                >
+                  <View style={[styles.catIcon, { backgroundColor: withAlpha(c.color, t.dark ? 0.24 : 0.16) }]}>
+                    <Icon name={c.icon} size={22} color={c.color} />
+                  </View>
+                  <T variant="caption" numberOfLines={1} style={{ color: on ? t.accentText : t.ink }}>
+                    {c.label}
+                  </T>
+                </Glass>
               );
             })}
           </View>
@@ -127,12 +133,14 @@ function EmojiGrid({ value, onSelect }: PickerProps<string>) {
       {GROUP_EMOJIS.map((e) => (
         <Pressable
           key={e}
+          accessibilityRole="button"
+          accessibilityLabel={e}
           onPress={() => {
             haptic.tap();
             onSelect(e);
             close();
           }}
-          style={[styles.emoji, { backgroundColor: e === value ? t.colors.primaryContainer : t.colors.surfaceContainerHigh }]}
+          style={[styles.emoji, { backgroundColor: e === value ? t.accentSoft : t.glassTint, borderColor: e === value ? t.accent : t.rimTop }]}
         >
           <RNText style={{ fontSize: 30 }}>{e}</RNText>
         </Pressable>
@@ -142,11 +150,10 @@ function EmojiGrid({ value, onSelect }: PickerProps<string>) {
 }
 
 const styles = StyleSheet.create({
-  search: { marginHorizontal: space.lg, marginBottom: space.lg },
   catGroup: { paddingHorizontal: space.lg, marginBottom: space.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  catCell: { width: '31.6%', borderRadius: 16, overflow: 'hidden' },
+  catCell: { width: '31.6%' },
   catInner: { alignItems: 'center', gap: space.sm, paddingVertical: space.md, paddingHorizontal: space.xs },
   catIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  emoji: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  emoji: { width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth * 2 },
 });
