@@ -5,7 +5,8 @@
 //   • a schedule with body {"weekly": true}                     → queues and sends the weekly summary
 //   • a schedule with body {} (optional backstop)               → sends anything still unsent
 //
-// Secrets (Edge Functions → Secrets): RESEND_API_KEY, EMAIL_FROM, optionally EXPO_ACCESS_TOKEN.
+// Secrets (Edge Functions → Secrets): NOTIFY_SECRET, RESEND_API_KEY, EMAIL_FROM, optionally EXPO_ACCESS_TOKEN.
+// Every caller must send the header `x-notify-secret: <NOTIFY_SECRET>` (the app's public key is not enough).
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildMessage, emailHtml, type Category, type Message } from '../_shared/messages.ts';
@@ -14,6 +15,10 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') ?? 'SplitWiser <onboarding@resend.dev>';
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
+const NOTIFY_SECRET = Deno.env.get('NOTIFY_SECRET');
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+/** A notification is dropped after this many failed tries. */
+const MAX_ATTEMPTS = 5;
 
 interface OutboxRow {
   id: number;
@@ -23,6 +28,15 @@ interface OutboxRow {
   actor_id: string | null;
   activity_id: string | null;
   data: Record<string, unknown>;
+  attempts: number;
+}
+
+/** Only Supabase itself (the webhook and scheduled jobs) may run this function. */
+function allowed(req: Request) {
+  const secret = req.headers.get('x-notify-secret');
+  if (NOTIFY_SECRET && secret === NOTIFY_SECRET) return true;
+  const bearer = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  return !!SERVICE_KEY && bearer === SERVICE_KEY;
 }
 
 async function sendPush(profileId: string, message: Message) {
@@ -68,7 +82,7 @@ async function deliver(row: OutboxRow) {
 }
 
 async function drain(only?: number) {
-  let query = db.from('notification_outbox').select('*').is('sent_at', null).order('id').limit(100);
+  let query = db.from('notification_outbox').select('*').is('sent_at', null).lt('attempts', MAX_ATTEMPTS).order('id').limit(100);
   if (only) query = query.eq('id', only);
   const { data: rows, error } = await query;
   if (error) throw error;
@@ -82,7 +96,8 @@ async function drain(only?: number) {
       if (note) await db.from('notification_outbox').update({ error: note }).eq('id', row.id);
       sent++;
     } catch (e) {
-      await db.from('notification_outbox').update({ sent_at: null, error: String((e as Error).message ?? e) }).eq('id', row.id);
+      // try again later (backstop schedule), up to MAX_ATTEMPTS times
+      await db.from('notification_outbox').update({ sent_at: null, attempts: row.attempts + 1, error: String((e as Error).message ?? e) }).eq('id', row.id);
     }
   }
   return { sent };
@@ -98,10 +113,13 @@ async function queueWeekly() {
     data: { owed: r.owed, owe: r.owe, new_expenses: r.new_expenses },
   }));
   if (rows.length) await db.from('notification_outbox').insert(rows);
+  // keep the queue small: forget notifications sent more than 30 days ago
+  await db.from('notification_outbox').delete().lt('sent_at', new Date(Date.now() - 30 * 86400_000).toISOString());
   return rows.length;
 }
 
 Deno.serve(async (req) => {
+  if (!allowed(req)) return Response.json({ error: 'not allowed' }, { status: 401 });
   try {
     const body = await req.json().catch(() => ({}));
     if (body.weekly) {
