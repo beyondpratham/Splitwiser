@@ -1,19 +1,22 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, TextInput as RNTextInput, View } from 'react-native';
-import { Button, Chip, HelperText, IconButton, Text } from 'react-native-paper';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Avatar } from '@/components/Avatar';
+import { Button, Chip, haptic } from '@/components/Controls';
+import { Glass } from '@/components/Glass';
+import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { CurrencyPicker } from '@/components/Pickers';
-import { EmptyState, haptic } from '@/components/ui';
+import { T } from '@/components/Text';
+import { EmptyState } from '@/components/ui';
 import { useGroup, useGroupBalances, useGroupPairDebts, useMe, useMyBalances, usePeople, useSaveExpense } from '@/lib/api';
 import { entries, firstName, groupDebts, summarizeBalances } from '@/lib/balances';
 import { currencyByCode } from '@/lib/currencies';
 import { formatMoney, fromMinor, parseAmount, toMinor } from '@/lib/money';
 import { friendlyError } from '@/lib/supabase';
-import { motion, space, useTheme } from '@/theme';
+import { font, motion, space, useTheme } from '@/theme';
 
 function today() {
   const d = new Date();
@@ -41,7 +44,6 @@ export default function SettleUp() {
   const spin = useSharedValue(0);
   const spinStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get() * 180}deg` }] }));
 
-  // ── pick who ──
   if (!from || !to) {
     const options = params.groupId
       ? groupDebts(gBalances, gPairs, group?.simplify_debts ?? true).filter((d) => d.from === me?.id || d.to === me?.id)
@@ -63,10 +65,10 @@ export default function SettleUp() {
                   left={<Avatar name={other?.name ?? '?'} color={other?.avatar_color ?? '#999'} />}
                   title={other?.name ?? '…'}
                   subtitle={
-                    <Text variant="bodyMedium" style={{ color: iOwe ? t.colors.owe : t.colors.owed }}>
+                    <T variant="caption" tone={iOwe ? 'owe' : 'owed'}>
                       {iOwe ? 'you owe ' : 'owes you '}
                       {formatMoney(d.amount, d.currency)}
-                    </Text>
+                    </T>
                   }
                   chevron
                   onPress={() => {
@@ -116,7 +118,6 @@ export default function SettleUp() {
       const parts = perGroup ? [...perGroup.entries()].map(([gid, map]) => [gid, map[cur] ?? 0] as const).filter(([, v]) => v !== 0) : [];
       const fullTotal = parts.reduce((s, [, v]) => s + v, 0);
       const isFull = parts.length > 1 && toMinor(Math.abs(fullTotal), cur) === minor;
-
       if (isFull) {
         for (const [gid, v] of parts) {
           const [a, b] = v > 0 ? [other, me!.id] : [me!.id, other];
@@ -138,61 +139,57 @@ export default function SettleUp() {
       <View style={styles.people}>
         <Person name={payer?.name ?? '?'} color={payer?.avatar_color ?? '#999'} label={firstName(payer, me?.id)} />
         <Animated.View style={[spinStyle, { marginBottom: 28 }]}>
-          <IconButton
-            icon="arrow-right"
-            mode="contained-tonal"
-            size={24}
-            accessibilityLabel="Swap direction"
-            onPress={() => {
-              haptic.tap();
-              spin.set(withSpring(spin.get() + 1, motion.bouncy));
-              setFrom(to);
-              setTo(from);
-            }}
-          />
+          <Glass variant="pill" onPress={() => {
+            haptic.tap();
+            spin.set(withSpring(spin.get() + 1, motion.bouncy));
+            setFrom(to);
+            setTo(from);
+          }} accessibilityLabel="Swap direction" contentStyle={styles.swap}>
+            <Icon name="arrow-right" size={22} color={t.accentText} />
+          </Glass>
         </Animated.View>
         <Person name={payee?.name ?? '?'} color={payee?.avatar_color ?? '#999'} label={firstName(payee, me?.id)} />
       </View>
-      <Text variant="bodyLarge" style={[styles.caption, { color: t.colors.onSurfaceVariant }]}>
+      <T variant="body" tone="dim" style={styles.caption}>
         {firstName(payer, me?.id)} {from === me?.id ? 'pay' : 'paid'} {firstName(payee, me?.id).replace(/^You$/, 'you')}
         {group ? ` · ${group.name}` : ''}
-      </Text>
+      </T>
 
-      <Animated.View entering={FadeInDown.springify()} style={[styles.amountCard, { backgroundColor: t.colors.primaryContainer }]}>
-        <Chip onPress={() => setCurrencyOpen(true)} icon={() => <Text>{currencyByCode(cur)?.flag}</Text>} compact>
-          {cur}
-        </Chip>
-        <RNTextInput
-          value={amountText}
-          onChangeText={setAmountText}
-          keyboardType="decimal-pad"
-          placeholder="0.00"
-          placeholderTextColor={t.colors.onPrimaryContainer}
-          selectionColor={t.colors.primary}
-          cursorColor={t.colors.onPrimaryContainer}
-          style={[styles.amount, { color: t.colors.onPrimaryContainer }]}
-          autoFocus={!params.amount}
-        />
+      <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.section}>
+        <Glass variant="pane" tint={t.accentSoft} contentStyle={styles.amountCard}>
+          <Chip label={cur} leading={<T>{currencyByCode(cur)?.flag}</T>} onPress={() => setCurrencyOpen(true)} />
+          <TextInput
+            value={amountText}
+            onChangeText={setAmountText}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+            accessibilityLabel="Amount"
+            placeholderTextColor={t.inkFaint}
+            selectionColor={t.accent}
+            cursorColor={t.accent}
+            style={[styles.amount, { color: t.ink }]}
+            autoFocus={!params.amount}
+          />
+        </Glass>
       </Animated.View>
       {suggested != null && Math.abs(suggested - amount) > 0.001 && (
-        <Chip icon="restore" style={{ alignSelf: 'center', marginTop: space.md }} onPress={() => setAmountText(String(suggested))}>
-          Use full balance · {formatMoney(suggested, cur)}
-        </Chip>
+        <Pressable onPress={() => setAmountText(String(suggested))} style={{ alignSelf: 'center', marginTop: -space.sm }}>
+          <T variant="label" tone="accent">
+            Use full balance · {formatMoney(suggested, cur)}
+          </T>
+        </Pressable>
       )}
-
       {error && (
-        <HelperText type="error" visible style={{ textAlign: 'center', marginTop: space.md }}>
+        <T variant="caption" tone="danger" style={{ textAlign: 'center', marginTop: space.md }}>
           {error}
-        </HelperText>
+        </T>
       )}
 
       <View style={{ paddingHorizontal: space.lg, marginTop: space.xxl, gap: space.md }}>
-        <Button mode="contained" icon="check" onPress={submit} loading={save.isPending} disabled={amount <= 0 || from === to || save.isPending} contentStyle={{ height: 56 }}>
-          Record payment
-        </Button>
-        <Text variant="bodySmall" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+        <Button title="Record payment" icon="check" size="lg" onPress={submit} loading={save.isPending} disabled={amount <= 0 || from === to} />
+        <T variant="caption" tone="dim" style={{ textAlign: 'center' }}>
           This only records the payment. Send the money with your usual payment app.
-        </Text>
+        </T>
       </View>
       <CurrencyPicker visible={currencyOpen} value={cur} onClose={() => setCurrencyOpen(false)} onSelect={setCurrency} />
     </Page>
@@ -200,20 +197,21 @@ export default function SettleUp() {
 }
 
 function Person({ name, color, label }: { name: string; color: string; label: string }) {
-  const t = useTheme();
   return (
     <Animated.View key={name} entering={ZoomIn.springify().damping(12)} style={{ alignItems: 'center', gap: space.sm, width: 104 }}>
       <Avatar name={name} color={color} size={76} />
-      <Text variant="titleMedium" numberOfLines={1} style={{ color: t.colors.onSurface }}>
+      <T variant="subhead" numberOfLines={1}>
         {label}
-      </Text>
+      </T>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   people: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md, marginTop: space.lg },
+  swap: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   caption: { textAlign: 'center', marginTop: space.lg, marginBottom: space.xl },
-  amountCard: { marginHorizontal: space.lg, borderRadius: 28, flexDirection: 'row', alignItems: 'center', padding: space.lg, gap: space.md },
-  amount: { flex: 1, fontSize: 48, fontWeight: '500', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  section: { marginHorizontal: space.lg, marginBottom: space.lg },
+  amountCard: { flexDirection: 'row', alignItems: 'center', padding: space.lg, gap: space.md },
+  amount: { flex: 1, fontSize: 46, fontFamily: font.semibold, letterSpacing: -1, fontVariant: ['tabular-nums'], outlineStyle: 'none' } as never,
 });

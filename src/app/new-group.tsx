@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Checkbox, HelperText, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Avatar, EmojiTile } from '@/components/Avatar';
+import { Check, Field, haptic, Segmented } from '@/components/Controls';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { CurrencyPicker, EmojiPicker } from '@/components/Pickers';
-import { haptic } from '@/components/ui';
+import { T } from '@/components/Text';
+import { Tile } from '@/components/Tile';
 import { useCreateGroup, useFriends, useMe } from '@/lib/api';
 import { currencyByCode } from '@/lib/currencies';
 import { friendlyError } from '@/lib/supabase';
@@ -48,38 +49,33 @@ export default function NewGroup() {
   return (
     <Page title="New group" variant="dialog" form confirm={{ label: 'Create', onPress: submit, disabled: !name.trim(), loading: create.isPending }}>
       <View style={styles.hero}>
-        <Pressable onPress={() => setSheet('emoji')} style={{ alignItems: 'center', gap: space.sm }} accessibilityLabel="Change icon">
+        <Pressable onPress={() => setSheet('emoji')} style={{ alignItems: 'center', gap: space.sm }} accessibilityRole="button" accessibilityLabel="Change icon">
           <Animated.View key={icon} entering={ZoomIn.springify().damping(10)}>
             <EmojiTile emoji={icon} size={96} />
           </Animated.View>
-          <Text variant="labelLarge" style={{ color: t.colors.primary }}>
+          <T variant="label" tone="accent">
             Change icon
-          </Text>
+          </T>
         </Pressable>
-        <TextInput mode="outlined" label="Group name" value={name} onChangeText={setName} autoFocus style={{ alignSelf: 'stretch' }} />
       </View>
-
-      <View style={{ paddingHorizontal: space.lg, marginBottom: space.xl }}>
-        <SegmentedButtons
+      <View style={styles.section}>
+        <Field label="Group name" placeholder="e.g. Goa trip, Flat 4B" value={name} onChangeText={setName} autoFocus />
+      </View>
+      <View style={styles.section}>
+        <Segmented
           value={kind}
-          onValueChange={(v) => setKind(v as GroupKind)}
-          buttons={[
+          onChange={(v) => setKind(v)}
+          options={[
             { value: 'trip', label: 'Trip', icon: 'airplane' },
-            { value: 'home', label: 'Home', icon: 'home' },
-            { value: 'couple', label: 'Couple', icon: 'heart' },
+            { value: 'home', label: 'Home', icon: 'home-outline' },
+            { value: 'couple', label: 'Couple', icon: 'heart-outline' },
             { value: 'other', label: 'Other', icon: 'dots-horizontal' },
           ]}
         />
       </View>
 
       <ListGroup>
-        <ListItem
-          left={<Icon name="currency-usd" color={t.colors.onSurfaceVariant} />}
-          title="Currency"
-          detail={`${currencyByCode(cur)?.flag ?? ''} ${cur}`}
-          chevron
-          onPress={() => setSheet('currency')}
-        />
+        <ListItem left={<Tile icon="currency-usd" />} title="Currency" detail={`${currencyByCode(cur)?.flag ?? ''} ${cur}`} chevron onPress={() => setSheet('currency')} />
       </ListGroup>
 
       <ListGroup title="Members" footer={friends.length === 0 ? 'Add friends first, or add people to the group later.' : `${members.length + 1} people including you`}>
@@ -90,22 +86,15 @@ export default function NewGroup() {
             setMembers(on ? members.filter((x) => x !== f.id) : [...members, f.id]);
           };
           return (
-            <ListItem
-              key={f.id}
-              left={<Avatar name={f.name} color={f.avatar_color} />}
-              title={f.name}
-              subtitle={f.email ?? undefined}
-              right={<Checkbox.Android status={on ? 'checked' : 'unchecked'} onPress={toggle} />}
-              onPress={toggle}
-            />
+            <ListItem key={f.id} left={<Avatar name={f.name} color={f.avatar_color} />} title={f.name} subtitle={f.email ?? undefined} right={<Check checked={on} onPress={toggle} label={f.name} />} onPress={toggle} />
           );
         })}
-        <ListItem left={<Icon name="account-plus-outline" color={t.colors.primary} />} title="Add a new friend" tone="primary" chevron onPress={() => router.push('/add-friend')} />
+        <ListItem left={<Icon name="account-plus-outline" size={24} color={t.accentText} />} title="Add a new friend" tone="accent" chevron onPress={() => router.push('/add-friend')} />
       </ListGroup>
       {error && (
-        <HelperText type="error" visible style={{ textAlign: 'center' }}>
+        <T variant="caption" tone="danger" style={{ textAlign: 'center' }}>
           {error}
-        </HelperText>
+        </T>
       )}
       <EmojiPicker visible={sheet === 'emoji'} value={icon} onClose={() => setSheet(null)} onSelect={setEmoji} />
       <CurrencyPicker visible={sheet === 'currency'} value={cur} onClose={() => setSheet(null)} onSelect={setCurrency} />
@@ -114,5 +103,6 @@ export default function NewGroup() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, marginBottom: space.xl },
+  hero: { alignItems: 'center', marginBottom: space.xl },
+  section: { paddingHorizontal: space.lg, marginBottom: space.xl },
 });

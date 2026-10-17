@@ -1,14 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Button, IconButton, Text, TextInput } from 'react-native-paper';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition, ZoomIn } from 'react-native-reanimated';
 import { Avatar, CategoryTile } from '@/components/Avatar';
+import { Button, haptic, IconButton } from '@/components/Controls';
 import { useFeedback } from '@/components/Feedback';
+import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
-import { EmptyState, haptic, Loading } from '@/components/ui';
+import { T } from '@/components/Text';
+import { EmptyState, Loading } from '@/components/ui';
 import { diffSnapshots, timeAgo } from '@/lib/activity';
 import {
   useAddComment,
@@ -25,7 +27,7 @@ import {
 import { firstName } from '@/lib/balances';
 import { categoryById } from '@/lib/categories';
 import { dayToDate, formatMoney } from '@/lib/money';
-import { space, useTheme } from '@/theme';
+import { font, space, useTheme } from '@/theme';
 
 const SPLIT_TEXT = { equal: 'Split equally', exact: 'Split by exact amounts', percent: 'Split by percentage', shares: 'Split by shares' };
 
@@ -73,39 +75,39 @@ export default function ExpenseScreen() {
       back
       form
       actions={!deleted && !e.is_payment ? [{ icon: 'pencil-outline', label: 'Edit', onPress: () => router.push({ pathname: '/add-expense', params: { expenseId: e.id } }) }] : undefined}
-      menu={!deleted ? [{ title: 'Delete', icon: 'delete-outline', onPress: remove }] : undefined}
+      menu={!deleted ? [{ label: 'Delete', icon: 'delete-outline', destructive: true, onPress: remove }] : undefined}
     >
       {deleted && (
-        <Animated.View entering={FadeIn} style={[styles.banner, { backgroundColor: t.colors.errorContainer }]}>
-          <Icon name="delete-outline" size={20} color={t.colors.onErrorContainer} />
-          <Text variant="bodyMedium" style={{ color: t.colors.onErrorContainer, flex: 1 }}>
-            This expense was deleted
-          </Text>
-          <Button mode="text" textColor={t.colors.onErrorContainer} onPress={() => restore.mutateAsync(e.id).catch(fail)}>
-            Restore
-          </Button>
+        <Animated.View entering={FadeIn} style={styles.section}>
+          <Glass variant="pill" tint={t.dangerSoft} contentStyle={styles.banner}>
+            <Icon name="delete-outline" size={20} color={t.danger} />
+            <T variant="label" tone="danger" style={{ flex: 1 }}>
+              This expense was deleted
+            </T>
+            <Button title="Restore" size="sm" variant="ghost" onPress={() => restore.mutateAsync(e.id).catch(fail)} />
+          </Glass>
         </Animated.View>
       )}
 
       <View style={styles.hero}>
         <Animated.View entering={ZoomIn.springify().damping(12)}>
-          <CategoryTile category={e.category} payment={e.is_payment} size={72} />
+          <CategoryTile category={e.category} payment={e.is_payment} size={76} />
         </Animated.View>
-        <Text variant="headlineSmall" style={[{ color: t.colors.onSurface, textAlign: 'center', marginTop: space.md }, deleted && styles.strike]}>
+        <T variant="heading" style={[{ textAlign: 'center', marginTop: space.md }, deleted && styles.strike]}>
           {e.is_payment ? 'Payment' : e.description}
-        </Text>
-        <Text variant="displayMedium" style={{ color: t.colors.onSurface, fontVariant: ['tabular-nums'] }}>
+        </T>
+        <T variant="display" numeric style={{ fontSize: 42, lineHeight: 50 }}>
           {formatMoney(Number(e.amount), e.currency)}
-        </Text>
-        <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+        </T>
+        <T variant="caption" tone="dim" style={{ textAlign: 'center' }}>
           {dayToDate(e.spent_on).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
           {group ? ` · ${group.name}` : ''}
           {!e.is_payment ? ` · ${categoryById(e.category).label}` : ''}
-        </Text>
-        <Text variant="labelMedium" style={{ color: t.colors.outline }}>
+        </T>
+        <T variant="caption" tone="faint">
           Added by {firstName(creator, me?.id)} {timeAgo(e.created_at)}
           {e.updated_at !== e.created_at && !deleted ? ` · edited ${timeAgo(e.updated_at)}` : ''}
-        </Text>
+        </T>
       </View>
 
       <ListGroup title={e.is_payment ? 'Payment' : 'Who paid & owes'} footer={e.is_payment ? undefined : SPLIT_TEXT[e.split_type]} animateIndex={1}>
@@ -137,54 +139,46 @@ export default function ExpenseScreen() {
 
       {e.notes && (
         <ListGroup title="Notes">
-          <ListItem left={<Icon name="note-text-outline" color={t.colors.onSurfaceVariant} />} title={<Text variant="bodyLarge">{e.notes}</Text>} />
+          <ListItem left={<Icon name="note-text-outline" color={t.inkDim} />} title={<T variant="body">{e.notes}</T>} />
         </ListGroup>
       )}
 
       {edits.length > 0 && (
         <ListGroup
           title="History"
-          action={
-            <Button compact onPress={() => setShowHistory(!showHistory)} icon={showHistory ? 'chevron-up' : 'chevron-down'}>
-              {showHistory ? 'Hide' : `${edits.length} ${edits.length === 1 ? 'edit' : 'edits'}`}
-            </Button>
-          }
+          action={<Button title={showHistory ? 'Hide' : `${edits.length} ${edits.length === 1 ? 'edit' : 'edits'}`} variant="ghost" size="sm" onPress={() => setShowHistory(!showHistory)} />}
         >
           {showHistory ? (
             edits.map((h) => (
               <ListItem
                 key={h.id}
-                left={<Icon name="history" color={t.colors.onSurfaceVariant} />}
-                title={
-                  <Text variant="titleSmall" style={{ color: t.colors.onSurface }}>
-                    {firstName(byId.get(h.actor_id ?? ''), me?.id)} edited · <Text style={{ color: t.colors.onSurfaceVariant }}>{timeAgo(h.created_at)}</Text>
-                  </Text>
-                }
+                left={<Icon name="history" color={t.inkDim} />}
+                title={`${firstName(byId.get(h.actor_id ?? ''), me?.id)} edited · ${timeAgo(h.created_at)}`}
                 subtitle={
                   <Animated.View entering={FadeIn}>
                     {diffSnapshots(h.data.before!, h.data.after!).map((line, i) => (
-                      <Text key={i} variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }}>
+                      <T key={i} variant="caption" tone="dim">
                         • {line}
-                      </Text>
+                      </T>
                     ))}
                   </Animated.View>
                 }
               />
             ))
           ) : (
-            <ListItem left={<Icon name="history" color={t.colors.onSurfaceVariant} />} title={`Edited ${edits.length} ${edits.length === 1 ? 'time' : 'times'}`} onPress={() => setShowHistory(true)} />
+            <ListItem left={<Icon name="history" color={t.inkDim} />} title={`Edited ${edits.length} ${edits.length === 1 ? 'time' : 'times'}`} chevron onPress={() => setShowHistory(true)} />
           )}
         </ListGroup>
       )}
 
       <View style={styles.comments}>
-        <Text variant="titleSmall" style={{ color: t.colors.primary, marginLeft: space.xs, marginBottom: space.sm }}>
+        <T variant="overline" tone="dim" style={{ marginLeft: space.sm, marginBottom: space.sm }}>
           Comments
-        </Text>
+        </T>
         {(comments.data ?? []).length === 0 && (
-          <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, marginLeft: space.xs, marginBottom: space.md }}>
+          <T variant="body" tone="dim" style={{ marginLeft: space.sm, marginBottom: space.md }}>
             No comments yet.
-          </Text>
+          </T>
         )}
         {(comments.data ?? []).map((c) => {
           const author = byId.get(c.author_id);
@@ -200,49 +194,56 @@ export default function ExpenseScreen() {
                       }
                     : undefined
                 }
-                style={[
-                  styles.bubble,
-                  { backgroundColor: mine ? t.colors.primaryContainer : t.colors.surfaceContainerHigh },
-                  mine ? { borderTopRightRadius: 6 } : { borderTopLeftRadius: 6 },
-                ]}
+                style={{ maxWidth: '80%' }}
               >
-                <Text variant="labelMedium" style={{ color: mine ? t.colors.onPrimaryContainer : t.colors.onSurfaceVariant }}>
-                  {firstName(author, me?.id)} · {timeAgo(c.created_at)}
-                </Text>
-                <Text variant="bodyLarge" style={{ color: mine ? t.colors.onPrimaryContainer : t.colors.onSurface }}>
-                  {c.body}
-                </Text>
+                {mine ? (
+                  <View style={[styles.bubble, { backgroundColor: t.accent, borderTopRightRadius: 6 }]}>
+                    <T variant="caption" style={{ color: t.accentInk, opacity: 0.8 }}>
+                      You · {timeAgo(c.created_at)}
+                    </T>
+                    <T variant="body" style={{ color: t.accentInk }}>
+                      {c.body}
+                    </T>
+                  </View>
+                ) : (
+                  <Glass radius={20} style={{ borderTopLeftRadius: 6 }} contentStyle={styles.bubble}>
+                    <T variant="caption" tone="dim">
+                      {firstName(author, me?.id)} · {timeAgo(c.created_at)}
+                    </T>
+                    <T variant="body">{c.body}</T>
+                  </Glass>
+                )}
               </Pressable>
             </Animated.View>
           );
         })}
         {!deleted && (
-          <View style={styles.composer}>
+          <Glass variant="pill" style={{ marginTop: space.sm }} contentStyle={styles.composer}>
             <TextInput
-              mode="outlined"
               placeholder="Add a comment"
               value={draft}
               onChangeText={setDraft}
               multiline
-              style={{ flex: 1, maxHeight: 140 }}
-              outlineStyle={{ borderRadius: 24 }}
+              placeholderTextColor={t.inkFaint}
+              selectionColor={t.accent}
+              style={[styles.composerInput, { color: t.ink }]}
             />
             <IconButton
               icon="send"
-              mode="contained"
-              disabled={!draft.trim() || addComment.isPending}
-              accessibilityLabel="Send comment"
-              onPress={() =>
+              label="Send comment"
+              color={draft.trim() ? t.accentText : t.inkFaint}
+              onPress={() => {
+                if (!draft.trim() || addComment.isPending) return;
                 addComment
                   .mutateAsync({ expenseId: e.id, body: draft.trim() })
                   .then(() => {
                     haptic.success();
                     setDraft('');
                   })
-                  .catch(fail)
-              }
+                  .catch(fail);
+              }}
             />
-          </View>
+          </Glass>
         )}
       </View>
     </Page>
@@ -250,11 +251,13 @@ export default function ExpenseScreen() {
 }
 
 const styles = StyleSheet.create({
-  banner: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.lg, marginBottom: space.lg, paddingLeft: space.lg, paddingRight: space.xs, borderRadius: 16 },
+  section: { marginHorizontal: space.lg, marginBottom: space.lg },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingLeft: space.lg, paddingRight: space.xs, height: 52 },
   hero: { alignItems: 'center', gap: 4, paddingHorizontal: space.xl, marginBottom: space.xl },
   strike: { textDecorationLine: 'line-through' },
   comments: { marginHorizontal: space.lg },
   comment: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', marginBottom: space.md },
-  bubble: { maxWidth: '80%', borderRadius: 20, paddingHorizontal: space.lg, paddingVertical: space.sm, gap: 2 },
-  composer: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.sm },
+  bubble: { borderRadius: 20, paddingHorizontal: space.lg, paddingVertical: space.sm, gap: 2 },
+  composer: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingLeft: space.lg, paddingRight: 6, minHeight: 52 },
+  composerInput: { flex: 1, fontSize: 16, fontFamily: font.regular, maxHeight: 140, paddingVertical: 10, outlineStyle: 'none' } as never,
 });

@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { HelperText, Text, TextInput } from 'react-native-paper';
 import Animated, { ZoomIn } from 'react-native-reanimated';
+import { Field, haptic } from '@/components/Controls';
 import { useFeedback } from '@/components/Feedback';
+import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { Page } from '@/components/Page';
-import { haptic } from '@/components/ui';
+import { T } from '@/components/Text';
 import { useAddFriend } from '@/lib/api';
 import { friendlyError } from '@/lib/supabase';
 import { space, useTheme } from '@/theme';
@@ -36,31 +37,29 @@ export default function AddFriend() {
   return (
     <Page title="Add friend" variant="dialog" form confirm={{ label: 'Add', onPress: submit, disabled: !valid, loading: add.isPending }}>
       <View style={{ alignItems: 'center', marginBottom: space.xl, gap: space.md, paddingHorizontal: space.xl }}>
-        <Animated.View entering={ZoomIn.springify().damping(12)} style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: t.colors.primaryContainer, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="account-plus" size={40} color={t.colors.onPrimaryContainer} />
+        <Animated.View entering={ZoomIn.springify().damping(12)}>
+          <Glass variant="pill" tint={t.accentSoft} contentStyle={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="account-plus-outline" size={40} color={t.accentText} />
+          </Glass>
         </Animated.View>
-        <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+        <T variant="body" tone="dim" style={{ textAlign: 'center' }}>
           If they don’t have an account yet, they’ll see all shared expenses as soon as they sign up with this email.
-        </Text>
+        </T>
       </View>
-      <View style={{ paddingHorizontal: space.lg, gap: space.md }}>
-        <TextInput mode="outlined" label="Name" value={name} onChangeText={setName} autoFocus left={<TextInput.Icon icon="account-outline" />} />
-        <TextInput
-          mode="outlined"
-          label="Email address"
+      <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
+        <Field label="Name" placeholder="Their name" value={name} onChangeText={setName} autoFocus icon="account-outline" />
+        <Field
+          label="Email"
+          placeholder="name@example.com"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
           onSubmitEditing={() => valid && submit()}
-          left={<TextInput.Icon icon="email-outline" />}
+          icon="email-outline"
+          error={error}
         />
-        {error && (
-          <HelperText type="error" visible>
-            {error}
-          </HelperText>
-        )}
       </View>
     </Page>
   );
