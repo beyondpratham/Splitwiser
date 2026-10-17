@@ -43,7 +43,7 @@ try {
   await check('sign up two people (email confirmation is off)', async () => {
     for (const [i, c] of [a, b].entries()) {
       const { session } = ok(await c.auth.signUp({ email: emails[i], password: `Smoke-${stamp}-pw`, options: { data: { name: `Smoke ${'AB'[i]}` } } }));
-      assert.ok(session, 'No session returned: turn off "Confirm email" in Authentication → Sign In / Providers → Email');
+      assert.ok(session, 'No session returned because "Confirm email" is on (that is the safe setting for real users). This test needs throwaway accounts, so it only runs while confirmation is off.');
     }
   });
 

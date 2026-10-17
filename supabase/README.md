@@ -13,6 +13,7 @@ oldest first:
 4. `20261017000000_profile_extras.sql`
 5. `20261018000000_notifications.sql`
 6. `20261019000000_phone_privacy.sql`
+7. `20261020000000_hardening.sql`
 
 Then check with `npm run test:remote`.
 
@@ -31,7 +32,11 @@ it. Replace the body with:
 <p>If you didn't ask for this, you can ignore this email.</p>
 ```
 
-**Authentication → Providers → Email**: minimum password length 8.
+**Authentication → Providers → Email**: minimum password length 8, and turn **Confirm email** on once SMTP
+works. This matters for safety: friends can add someone by email before they join, and that invite (with
+its shared expenses) is handed to whoever signs up with the address. With confirmation on, only the real
+owner of the email can get it. (`npm run test:remote` signs up throwaway accounts, so it only runs while
+confirmation is off.)
 
 ## 3. Notifications
 
@@ -40,19 +45,22 @@ Notifications. Events queue rows in `notification_outbox`; the `notify` edge fun
 
 1. **Deploy the function.** Edge Functions → Deploy a new function → name it `notify`. Paste
    `functions/notify/index.ts`, and add `functions/_shared/messages.ts` as a second file at
-   `../_shared/messages.ts`. (Or from this folder: `npx supabase functions deploy notify`.)
+   `../_shared/messages.ts`, and switch **Verify JWT** off (the function checks its own secret instead).
+   (Or from this folder: `npx supabase functions deploy notify`, which reads `config.toml`.)
 2. **Secrets** (Edge Functions → Secrets):
+   - `NOTIFY_SECRET`: any long random string (a password generator is fine). Only callers that send it
+     can run the function, so nobody can trigger emails with the app's public key.
    - `RESEND_API_KEY`: from resend.com (free plan).
    - `EMAIL_FROM`: e.g. `SplitWiser <notifications@yourdomain.com>`. Resend only delivers to other
      people once you've verified a domain you own.
    - `EXPO_ACCESS_TOKEN`: optional, only if you turn on "enhanced push security" in Expo.
 3. **Send on every new notification.** Database → Webhooks → Create:
    table `notification_outbox`, event `Insert`, type **Supabase Edge Functions**, function `notify`,
-   method `POST`, and add the auth header with the service key (one click in that form).
+   method `POST`, and add an HTTP header `x-notify-secret` with your `NOTIFY_SECRET` value.
 4. **Weekly summary.** Integrations → Cron → Create job: every Sunday 9:00 (`0 9 * * 0`), type
-   **Supabase Edge Function**, `notify`, body `{"weekly": true}`.
+   **Supabase Edge Function**, `notify`, body `{"weekly": true}`, header `x-notify-secret` as above.
 5. **Retry anything that failed (optional).** Another cron job every 10 minutes (`*/10 * * * *`) calling
-   `notify` with body `{}`.
+   `notify` with body `{}` and the same header. Each notification is tried at most 5 times.
 
 ### Push on Android
 
