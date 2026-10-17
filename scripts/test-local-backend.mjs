@@ -44,11 +44,11 @@ try {
   });
 
   const { id: uid } = ok(await alex.auth.getUser()).user;
-  const me = ok(await alex.from('profiles').select('*').eq('user_id', uid).single());
+  const me = ok(await alex.from('profiles').select('id, name, email').eq('user_id', uid).single());
   await check('profile via .single()', async () => assert.equal(me.name, 'Alex Morgan'));
 
   await check('profiles, friendships and groups with embedded members', async () => {
-    assert.ok(ok(await alex.from('profiles').select('*')).length >= 5);
+    assert.ok(ok(await alex.from('profiles').select('id')).length >= 5);
     assert.equal(ok(await alex.from('friendships').select('friend_id').eq('profile_id', me.id)).length, 4);
     const groups = ok(await alex.from('groups').select('*, group_members(profile_id)').order('created_at', { ascending: false }));
     assert.equal(groups.length, 2);
@@ -134,7 +134,7 @@ try {
 
   await check('updates through RLS + column grants', async () => {
     ok(await alex.from('profiles').update({ name: 'Alex M.' }).eq('id', me.id));
-    assert.equal(ok(await alex.from('profiles').select('*').eq('id', me.id).single()).name, 'Alex M.');
+    assert.equal(ok(await alex.from('profiles').select('name').eq('id', me.id).single()).name, 'Alex M.');
     ok(await alex.from('groups').update({ simplify_debts: false }).eq('id', flat.id));
     const { error } = await alex.from('profiles').update({ email: 'x@y.z' }).eq('id', me.id);
     assert.match(error.message, /permission denied/);
@@ -144,7 +144,7 @@ try {
     const newbie = client();
     const { session } = ok(await newbie.auth.signUp({ email: 'newbie@demo.app', password: 'secret12', options: { data: { name: 'New Person' } } }));
     assert.ok(session?.access_token);
-    assert.equal(ok(await newbie.from('profiles').select('*')).length, 1);
+    assert.equal(ok(await newbie.from('profiles').select('id')).length, 1);
     assert.equal(ok(await newbie.from('expenses').select('*')).length, 0);
     const again = await newbie.auth.signUp({ email: 'newbie@demo.app', password: 'secret12' });
     assert.match(again.error.message, /already registered/);

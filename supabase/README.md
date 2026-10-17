@@ -12,6 +12,7 @@ oldest first:
 3. `20261015000000_remove_friend.sql`
 4. `20261017000000_profile_extras.sql`
 5. `20261018000000_notifications.sql`
+6. `20261019000000_phone_privacy.sql`
 
 Then check with `npm run test:remote`.
 

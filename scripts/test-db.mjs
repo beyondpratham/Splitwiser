@@ -77,7 +77,7 @@ assert.equal(Number(bal[0].total), -60, 'carol owes 60 total');
 // Outsiders see nothing, and cannot write directly
 const dave = await signUp('dave@example.com', 'Dave');
 assert.equal((await as(dave, 'select * from public.expenses')).length, 0);
-assert.equal((await as(dave, 'select * from public.profiles')).length, 1, 'dave only sees himself');
+assert.equal((await as(dave, 'select id from public.profiles')).length, 1, 'dave only sees himself');
 await rejects(as(dave, `insert into public.groups (name) values ('x')`), /permission denied/);
 await rejects(as(dave, `update public.profiles set email = 'alice@example.com'`), /permission denied/);
 await rejects(as(dave, `select public.add_comment($1, 'hi')`, [e1]), /not found/);
@@ -154,6 +154,15 @@ await rejects(as(omar, 'select * from public.notification_outbox'), /permission 
 await rejects(as(omar, 'select * from public.weekly_summaries()'), /permission denied/);
 const weekly = (await db.query('select * from public.weekly_summaries() where profile_id = $1', [ninaP])).rows[0];
 assert.deepEqual(weekly.channels, ['email'], 'weekly summary defaults to email');
+
+// Phone numbers: private to their owner; finding someone by number can be switched off
+await rejects(as(bob, 'select phone from public.profiles'), /permission denied/);
+assert.equal((await as(alice, "select public.my_private_profile() ->> 'phone' as p"))[0].p, '+919876543210', 'you can read your own number');
+assert.equal((await as(bob, 'select * from public.find_users_by_contacts($1, $2)', [['alice@example.com'], []]))[0].phone, null, 'matching by email does not reveal the number');
+await as(alice, 'update public.profiles set phone_discoverable = false where id = $1', [aliceP]);
+assert.equal((await as(bob, 'select * from public.find_users_by_contacts($1, $2)', [[], ['+919876543210']])).length, 0, 'hidden number does not match');
+await rejects(as(bob, 'select public.add_friend_by_phone($1)', ['+919876543210']), /nobody on SplitWiser/);
+await as(alice, 'update public.profiles set phone_discoverable = true where id = $1', [aliceP]);
 
 // Account deletion: login gone, profile anonymized, shared history kept for the others
 await as(dave, 'select public.delete_my_account()');

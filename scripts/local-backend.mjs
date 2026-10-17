@@ -377,6 +377,9 @@ async function handleRest(req, res, path, url) {
   if (req.method === 'PATCH' || req.method === 'DELETE') {
     const values = [];
     let sql;
+    // like PostgREST, only read the rows back when asked to (they may include columns the caller can't read)
+    const representation = (req.headers.prefer ?? '').includes('return=representation');
+    const returning = representation ? 'returning t.*' : '';
     if (req.method === 'PATCH') {
       const body = await readJson(req);
       const sets = Object.entries(body).map(([k, v]) => {
@@ -384,15 +387,15 @@ async function handleRest(req, res, path, url) {
         return `${ident(k)} = $${values.length}`;
       });
       if (!sets.length) return send(res, 400, { code: 'PGRST102', message: 'Empty update' });
-      sql = `update public.${ident(table)} t set ${sets.join(', ')} ${whereClause(params, values)} returning t.*`;
+      sql = `update public.${ident(table)} t set ${sets.join(', ')} ${whereClause(params, values)} ${returning}`;
     } else {
-      sql = `delete from public.${ident(table)} t ${whereClause(params, values)} returning t.*`;
+      sql = `delete from public.${ident(table)} t ${whereClause(params, values)} ${returning}`;
     }
     if (!sql.includes(' where ')) return send(res, 400, { code: '21000', message: 'A filter is required for update and delete' });
     try {
       const rows = await asUser(db, uid, async (tx) => (await tx.query(sql, values)).rows);
       broadcastNewActivity();
-      return (req.headers.prefer ?? '').includes('return=representation') ? send(res, 200, rows) : send(res, 204);
+      return representation ? send(res, 200, rows) : send(res, 204);
     } catch (e) {
       return pgError(res, e);
     }
