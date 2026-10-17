@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email Confirmed</title>
+  <meta name="description" content="Your SplitWiser email is confirmed. Go back to the app and sign in.">
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header><img src="icon.png" alt=""><a href="./">SplitWiser</a></header>
+  <h1 id="title">Email confirmed</h1>
+  <p id="message">You're all set. Go back to the SplitWiser app and sign in with your email and password.</p>
+  <footer><a href="privacy.html">Privacy policy</a></footer>
+</main>
+<script>
+  // Supabase sends people here after the confirmation link; a failed or expired link says so in the URL.
+  var params = new URLSearchParams(location.hash.slice(1) + '&' + location.search.slice(1));
+  if (params.get('error')) {
+    document.getElementById('title').textContent = 'That link didn’t work';
+    document.getElementById('message').textContent =
+      'It may have expired or already been used. Open SplitWiser and sign in: if your email still needs confirming, sign up again with the same email to get a new link.';
+  }
+</script>
+</body>
+</html>
