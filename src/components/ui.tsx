@@ -1,29 +1,20 @@
-import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { ActivityIndicator, StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { formatMoney } from '@/lib/money';
 import { space, useTheme } from '@/theme';
+import { Backdrop, Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
+import { T } from './Text';
 
-export const haptic = {
-  tap: () => {
-    Haptics.selectionAsync().catch(() => {});
-  },
-  success: () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  },
-  error: () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-  },
-};
+export { haptic } from './Controls';
 
 export function Loading() {
   const t = useTheme();
   return (
-    <View style={[styles.center, { backgroundColor: t.colors.surface }]}>
-      <ActivityIndicator size="large" />
+    <View style={styles.center}>
+      <Backdrop />
+      <ActivityIndicator size="large" color={t.accent} />
     </View>
   );
 }
@@ -32,18 +23,20 @@ export function EmptyState({ icon, title, message, action }: { icon: IconName; t
   const t = useTheme();
   return (
     <Animated.View entering={FadeIn.duration(300)} style={styles.empty}>
-      <Animated.View entering={ZoomIn.springify().damping(12)} style={[styles.emptyIcon, { backgroundColor: t.colors.primaryContainer }]}>
-        <Icon name={icon} size={36} color={t.colors.onPrimaryContainer} />
+      <Animated.View entering={ZoomIn.springify().damping(13)}>
+        <Glass variant="pill" tint={t.accentSoft} contentStyle={styles.emptyIcon}>
+          <Icon name={icon} size={34} color={t.accentText} />
+        </Glass>
       </Animated.View>
-      <Text variant="titleLarge" style={{ textAlign: 'center', color: t.colors.onSurface }}>
+      <T variant="heading" style={{ textAlign: 'center' }}>
         {title}
-      </Text>
+      </T>
       {message && (
-        <Text variant="bodyMedium" style={{ textAlign: 'center', color: t.colors.onSurfaceVariant, marginBottom: space.sm }}>
+        <T variant="body" tone="dim" style={{ textAlign: 'center' }}>
           {message}
-        </Text>
+        </T>
       )}
-      {action}
+      {action && <View style={{ marginTop: space.sm }}>{action}</View>}
     </Animated.View>
   );
 }
@@ -59,8 +52,7 @@ export function useCountUp(target: number, duration = 650) {
     let frame = 0;
     const step = () => {
       const p = Math.min(1, (Date.now() - t0) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setValue(start + (target - start) * eased);
+      setValue(start + (target - start) * (1 - Math.pow(1 - p, 3)));
       if (p < 1) frame = requestAnimationFrame(step);
       else from.current = target;
     };
@@ -76,36 +68,35 @@ export function useCountUp(target: number, duration = 650) {
 export function AnimatedMoney({ amount, currency, style }: { amount: number; currency: string; style?: StyleProp<TextStyle> }) {
   const value = useCountUp(amount);
   return (
-    <Text style={[{ fontVariant: ['tabular-nums'] }, style]} numberOfLines={1} adjustsFontSizeToFit>
+    <T variant="display" numeric numberOfLines={1} adjustsFontSizeToFit style={style}>
       {formatMoney(value, currency)}
-    </Text>
+    </T>
   );
 }
 
-/** Right-aligned two-line amount label used in lists. Positive = good for me. */
+/** Right-aligned "owes you / you owe" amount used in lists. Positive = good for me. */
 export function AmountLabel({ amount, currency, positiveLabel, negativeLabel }: { amount: number; currency: string; positiveLabel: string; negativeLabel: string }) {
-  const t = useTheme();
   if (Math.abs(amount) < 0.005)
     return (
-      <Text variant="labelMedium" style={{ color: t.colors.onSurfaceVariant }}>
-        settled
-      </Text>
+      <T variant="caption" tone="faint">
+        settled up
+      </T>
     );
-  const color = amount > 0 ? t.colors.owed : t.colors.owe;
+  const tone = amount > 0 ? 'owed' : 'owe';
   return (
     <View style={{ alignItems: 'flex-end' }}>
-      <Text variant="labelSmall" style={{ color }}>
+      <T variant="caption" tone={tone}>
         {amount > 0 ? positiveLabel : negativeLabel}
-      </Text>
-      <Text variant="titleSmall" style={{ color, fontVariant: ['tabular-nums'] }}>
+      </T>
+      <T variant="subhead" tone={tone} numeric>
         {formatMoney(Math.abs(amount), currency)}
-      </Text>
+      </T>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingHorizontal: space.xxl, paddingVertical: 48, gap: space.md },
-  emptyIcon: { width: 80, height: 80, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: space.xs },
+  empty: { alignItems: 'center', paddingHorizontal: space.xxl, paddingVertical: 40, gap: space.md },
+  emptyIcon: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
 });
