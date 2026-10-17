@@ -16,7 +16,11 @@ const APP_PORT = 8090;
 
 if (process.argv.includes('--build') || !existsSync(join(WEB_DIR, 'index.html'))) {
   console.log('→ Exporting the web build…');
-  execSync(`npx expo export --platform web --output-dir dist/web`, { stdio: 'inherit' });
+  // never point the test build at a real Supabase project from .env
+  execSync(`npx expo export --platform web --output-dir dist/web --clear`, {
+    stdio: "inherit",
+    env: { ...process.env, EXPO_NO_DOTENV: "1", EXPO_PUBLIC_SUPABASE_URL: "", EXPO_PUBLIC_SUPABASE_KEY: "" },
+  });
 }
 rmSync(SHOTS, { recursive: true, force: true });
 mkdirSync(SHOTS, { recursive: true });
@@ -176,20 +180,44 @@ await run('Activity and account sections', 'light', async (page, shot) => {
   await label(page, 'Search activity').click();
   await visible(page.getByPlaceholder('Search activity')).fill('villa');
   await shot('activity-search');
+
   await tab(page, 'Account').click();
   await button(page, 'Buy me a coffee').waitFor();
   await shot('account');
-  await button(page, 'Edit profile').click();
-  await text(page, 'Save name').waitFor();
+  await label(page, 'Show my QR code').click();
+  await text(page, 'Friends can scan this in SplitWiser → Add friend to add you instantly.').waitFor();
+  await shot('qr');
+  await page.mouse.click(20, 120); // touching outside closes it
+  await page.getByText('Friends can scan this in SplitWiser → Add friend to add you instantly.').waitFor({ state: 'detached' });
+
+  await label(page, 'Your profile').click();
+  await text(page, 'Save changes').waitFor();
   await shot('profile');
+  await visible(page.getByPlaceholder('+91 98765 43210')).fill('98765 43219');
+  await button(page, 'Save changes').click();
+  await text(page, 'Profile saved').waitFor();
+  await button(page, 'fox avatar').click();
+  await shot('profile-saved');
   await label(page, 'Back').click();
+
   await text(page, 'Settings').click();
   await text(page, 'Appearance').waitFor();
   await shot('settings');
+  await page.mouse.wheel(0, 1400);
+  await shot('settings-more');
+  await page.mouse.wheel(0, -2000);
   await button(page, 'Dark').click();
   await shot('settings-dark');
   await button(page, 'Light').click();
+  await text(page, 'Import from other apps').click();
+  await button(page, 'Choose CSV file').waitFor();
+  await shot('import');
   await label(page, 'Back').click();
+  await text(page, 'Sync contacts').click();
+  await text(page, 'Use your phone for this').waitFor();
+  await label(page, 'Back').click();
+  await label(page, 'Back').click();
+
   await text(page, 'Help & support').click();
   await text(page, 'Frequently asked').waitFor();
   await shot('help');
@@ -198,11 +226,17 @@ await run('Activity and account sections', 'light', async (page, shot) => {
   await text(page, 'Enjoying SplitWiser?').waitFor();
   await shot('coffee');
   await label(page, 'Close').click();
-  await tab(page, 'Groups').click();
-  await label(page, 'Spending insights').click();
+  await button(page, 'Spending insights').click();
   await text(page, 'By category').waitFor();
   await page.waitForTimeout(800);
   await shot('insights');
+  await label(page, 'Back').click();
+
+  await tab(page, 'Friends').click();
+  await button(page, 'Add expense').click();
+  await button(page, 'USD').click();
+  await text(page, 'Popular').waitFor();
+  await shot('currency-picker');
 });
 
 await run('Dark theme', 'dark', async (page, shot) => {
