@@ -50,7 +50,34 @@
           }
         }
       ],
-      "./plugins/with-local-network"
+      "./plugins/with-local-network",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SplitWiser uses your photos to set your profile picture.",
+          "cameraPermission": "SplitWiser uses the camera for your profile picture and to scan friends’ QR codes."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SplitWiser uses the camera to scan friends’ QR codes.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "SplitWiser checks which of your contacts are on SplitWiser so you can add them."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "SplitWiser uses Face ID to lock the app."
+        }
+      ]
     ],
     "scheme": "splitwiser",
     "experiments": {
