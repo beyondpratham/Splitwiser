@@ -157,6 +157,29 @@ try {
     assert.equal(g.group_members.length, 2);
   });
 
+  await check('notification settings round-trip', async () => {
+    const prefs = ok(await alex.rpc('my_notification_prefs'));
+    assert.equal(prefs.payments, 'both');
+    ok(await alex.rpc('set_notification_pref', { category: 'payments', channel: 'email' }));
+    assert.equal(ok(await alex.rpc('my_notification_prefs')).payments, 'email');
+    const { error } = await alex.rpc('set_notification_pref', { category: 'payments', channel: 'pigeon' });
+    assert.match(error.message, /unknown notification channel/);
+  });
+
+  await check('forgot password: code by "email", then a new password signs in', async () => {
+    const forgetful = client();
+    ok(await forgetful.auth.resetPasswordForEmail('priya@demo.app'));
+    const { code } = await (await fetch(`${URL}/auth/v1/__dev/recovery-code?email=priya@demo.app`)).json();
+    assert.match(code, /^\d{6}$/);
+    const wrong = await forgetful.auth.verifyOtp({ email: 'priya@demo.app', token: '000000', type: 'recovery' });
+    assert.ok(wrong.error, 'wrong code is rejected');
+    ok(await forgetful.auth.verifyOtp({ email: 'priya@demo.app', token: code, type: 'recovery' }));
+    ok(await forgetful.auth.updateUser({ password: 'brandnew99' }));
+    ok(await client().auth.signInWithPassword({ email: 'priya@demo.app', password: 'brandnew99' }));
+    const old = await client().auth.signInWithPassword({ email: 'priya@demo.app', password: 'demo1234' });
+    assert.match(old.error.message, /Invalid login credentials/);
+  });
+
   await sam.removeChannel(channel);
   console.log(`✓ local backend contract: ${passed} checks passed`);
 } finally {

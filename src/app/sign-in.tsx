@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, ZoomIn } from 'react-native-reanimated';
@@ -104,6 +105,9 @@ export default function SignIn() {
               hint={notice ?? undefined}
             />
             <Button title={mode === 'in' ? 'Sign in' : 'Create account'} size="lg" onPress={submit} loading={busy} disabled={!valid || busy} style={{ marginTop: space.sm }} />
+            {mode === 'in' && (
+              <Button title="Forgot password?" variant="ghost" onPress={() => router.push({ pathname: '/reset-password', params: { email: email.trim() } })} />
+            )}
           </Animated.View>
         </Glass>
       </Animated.View>

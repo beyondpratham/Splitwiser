@@ -2,7 +2,7 @@
 // no Docker and nothing installed globally. It runs the real migrations (with row level security)
 // on PGlite and speaks the subset of the Supabase HTTP + realtime protocols the app uses:
 //
-//   /auth/v1      signup, password + refresh-token sign in, user, logout
+//   /auth/v1      signup, password + refresh-token sign in, user, logout, password reset by code
 //   /rest/v1      PostgREST-style select / update / delete with filters, ordering and embeds; rpc calls
 //   /realtime/v1  websocket: postgres_changes INSERT events for the activity table
 //
@@ -105,7 +105,7 @@ if (userCount[0].n === 0 && !args.has('--no-seed')) {
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type, prefer, accept, accept-profile, content-profile, x-client-info, x-supabase-api-version, range',
   'Access-Control-Expose-Headers': 'content-range, x-supabase-api-version',
 };
@@ -131,6 +131,8 @@ function pgError(res, e) {
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
+
+const recoveryCodes = new Map(); // email → { code, expires }
 
 async function handleAuth(req, res, path, url) {
   const authError = (status, code, msg) => send(res, status, { code: status, error_code: code, msg, error: code, error_description: msg });
@@ -171,6 +173,44 @@ async function handleAuth(req, res, path, url) {
     if (!uid) return authError(401, 'bad_jwt', 'Invalid JWT');
     const { rows } = await db.query('select * from auth.users where id = $1', [uid]);
     return rows[0] ? send(res, 200, userJson(rows[0])) : authError(404, 'user_not_found', 'User not found');
+  }
+
+  // Password reset: the code is printed here instead of emailed (and readable by the UI check).
+  if (path === 'recover' && req.method === 'POST') {
+    const { email } = await readJson(req);
+    const { rows } = await db.query('select id from auth.users where email = lower($1)', [email ?? '']);
+    if (rows[0]) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      recoveryCodes.set(String(email).toLowerCase(), { code, expires: Date.now() + 15 * 60_000 });
+      console.log(`✉  Password reset code for ${email}: ${code}`);
+    }
+    return send(res, 200, {}); // same answer either way, so emails can't be probed
+  }
+
+  if (path === 'verify' && req.method === 'POST') {
+    const { email, token, type } = await readJson(req);
+    const entry = recoveryCodes.get(String(email ?? '').toLowerCase());
+    if (type !== 'recovery' || !entry || entry.code !== token || entry.expires < Date.now())
+      return authError(403, 'otp_expired', 'Token has expired or is invalid');
+    recoveryCodes.delete(String(email).toLowerCase());
+    const { rows } = await db.query('select * from auth.users where email = lower($1)', [email]);
+    return send(res, 200, await issueSession(rows[0]));
+  }
+
+  if (path === 'user' && req.method === 'PUT') {
+    const uid = bearerUser(req);
+    if (!uid) return authError(401, 'bad_jwt', 'Invalid JWT');
+    const { password } = await readJson(req);
+    if (password !== undefined) {
+      if (password.length < 6) return authError(422, 'weak_password', 'Password should be at least 6 characters.');
+      await db.query('update auth.users set encrypted_password = $1 where id = $2', [hashPassword(password), uid]);
+    }
+    const { rows } = await db.query('select * from auth.users where id = $1', [uid]);
+    return send(res, 200, userJson(rows[0]));
+  }
+
+  if (path === '__dev/recovery-code' && req.method === 'GET') {
+    return send(res, 200, { code: recoveryCodes.get((url.searchParams.get('email') ?? '').toLowerCase())?.code ?? null });
   }
 
   if (path === 'logout' && req.method === 'POST') {
