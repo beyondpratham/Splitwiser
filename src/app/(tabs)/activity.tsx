@@ -1,9 +1,8 @@
 import { router } from 'expo-router';
 import { Fragment, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Avatar, CategoryTile, EmojiTile } from '@/components/Avatar';
-import { Field } from '@/components/Controls';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { Page } from '@/components/Page';
@@ -31,7 +30,6 @@ export default function ActivityFeed() {
   const me = useMe().data;
   const { byId } = usePeople();
   const groups = useGroups().data ?? [];
-  const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
 
   const days = useMemo(() => {
@@ -54,15 +52,10 @@ export default function ActivityFeed() {
       title="Activity"
       variant="large"
       inTabs
-      actions={[{ icon: searching ? 'close' : 'magnify', label: searching ? 'Close search' : 'Search activity', onPress: () => (setSearching(!searching), setQuery('')) }]}
+      search={{ value: query, onChange: setQuery, placeholder: 'Search activity', label: 'Search activity' }}
       refreshing={activity.isRefetching}
       onRefresh={() => activity.refetch()}
     >
-      {searching && (
-        <Animated.View entering={FadeInDown.springify().damping(18)} exiting={FadeOut.duration(150)} style={styles.search}>
-          <Field icon="magnify" placeholder="Search activity" value={query} onChangeText={setQuery} autoFocus autoCorrect={false} />
-        </Animated.View>
-      )}
       {activity.data && days.length === 0 ? (
         query ? (
           <T variant="body" tone="dim" style={{ textAlign: 'center', marginTop: space.xl }}>
@@ -153,7 +146,6 @@ function ActivityRow({ a, meId, people, groupEmoji }: { a: Activity; meId?: stri
 }
 
 const styles = StyleSheet.create({
-  search: { paddingHorizontal: space.lg, marginBottom: space.lg },
   day: { marginHorizontal: space.lg, marginBottom: space.xl },
   dayLabel: { marginBottom: space.sm, marginLeft: space.sm },
   row: { flexDirection: 'row', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, alignItems: 'flex-start' },

@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Avatar } from '@/components/Avatar';
 import { BalanceSummary } from '@/components/BalanceSummary';
-import { Button, Chip, Field } from '@/components/Controls';
+import { Button, Chip } from '@/components/Controls';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
@@ -30,7 +30,6 @@ export default function Friends() {
   const summary = summarizeBalances(balances.data ?? []);
   const groupNames = useMemo(() => new Map((groupsData ?? []).map((g) => [g.id, g.name])), [groupsData]);
   const [filter, setFilter] = useState<Filter>('all');
-  const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const [showSettled, setShowSettled] = useState(false);
 
@@ -79,10 +78,8 @@ export default function Friends() {
       title="Friends"
       variant="large"
       inTabs
-      actions={[
-        { icon: searching ? 'close' : 'magnify', label: searching ? 'Close search' : 'Search friends', onPress: () => (setSearching(!searching), setQuery('')) },
-        { icon: 'account-plus-outline', label: 'Add friend', onPress: () => router.push('/add-friend') },
-      ]}
+      actions={[{ icon: 'account-plus-outline', label: 'Add friend', onPress: () => router.push('/add-friend') }]}
+      search={{ value: query, onChange: setQuery, placeholder: 'Search by name or email', label: 'Search friends' }}
       fab={{ label: 'Add expense', icon: 'plus', onPress: () => router.push('/add-expense') }}
       refreshing={isRefetching}
       onRefresh={() => {
@@ -90,11 +87,6 @@ export default function Friends() {
         balances.refetch();
       }}
     >
-      {searching && (
-        <Animated.View entering={FadeInDown.springify().damping(18)} exiting={FadeOut.duration(150)} style={styles.search}>
-          <Field icon="magnify" placeholder="Search by name or email" value={query} onChangeText={setQuery} autoFocus autoCorrect={false} />
-        </Animated.View>
-      )}
       {!query && <BalanceSummary {...summary} />}
 
       {data && friends.length === 0 ? (
@@ -173,7 +165,6 @@ function Breakdown({ lines, groupNames }: { lines: [string | null, CurrencyMap][
 }
 
 const styles = StyleSheet.create({
-  search: { paddingHorizontal: space.lg, marginBottom: space.lg },
   filters: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.lg },
   toggle: { alignItems: 'center', marginBottom: space.lg },
   none: { textAlign: 'center', marginBottom: space.xl, paddingHorizontal: space.xl },
