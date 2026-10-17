@@ -47,8 +47,8 @@ try {
     }
   });
 
-  const meA = ok(await a.from('profiles').select('*').eq('user_id', ok(await a.auth.getUser()).user.id).single());
-  const meB = ok(await b.from('profiles').select('*').eq('user_id', ok(await b.auth.getUser()).user.id).single());
+  const meA = ok(await a.from('profiles').select('id, name').eq('user_id', ok(await a.auth.getUser()).user.id).single());
+  const meB = ok(await b.from('profiles').select('id, name').eq('user_id', ok(await b.auth.getUser()).user.id).single());
   await check('profiles were created by the sign-up trigger', async () => assert.equal(meA.name, 'Smoke A'));
 
   await check('add friend and create a group', async () => {
@@ -106,6 +106,31 @@ try {
     assert.equal(ok(await stranger.from('expenses').select('*')).length, 0);
     const { error } = await a.from('profiles').update({ email: 'hijack@example.com' }).eq('id', meA.id);
     assert.ok(error, 'email column should not be writable');
+  });
+
+  await check('phone numbers, preset avatars and one device per account', async () => {
+    const phone = `+9199${String(Date.now()).slice(-8)}`;
+    ok(await a.from('profiles').update({ phone, avatar: 'emoji:fox', avatar_color: '#E8590C' }).eq('id', meA.id));
+    const { error } = await b.from('profiles').update({ phone }).eq('id', meB.id);
+    assert.match(error?.message ?? '', /profiles_phone_key|duplicate/, 'a phone number belongs to one account');
+    ok(await a.rpc('claim_device', { device: `smoke-${stamp}` }));
+    assert.equal(ok(await a.from('active_devices').select('device_id')).at(0)?.device_id, `smoke-${stamp}`);
+  });
+
+  await check('notification settings and reminders', async () => {
+    assert.equal(ok(await b.rpc('my_notification_prefs')).reminders, 'both');
+    ok(await b.rpc('set_notification_pref', { category: 'expenses', channel: 'email' }));
+    assert.equal(ok(await b.rpc('my_notification_prefs')).expenses, 'email');
+    ok(await a.rpc('send_reminder', { fid: meB.id })); // b owes a 15
+    const again = await a.rpc('send_reminder', { fid: meB.id });
+    assert.match(again.error?.message ?? '', /already reminded/);
+    const { error } = await a.from('notification_outbox').select('*');
+    assert.ok(error, 'the notification queue is private');
+  });
+
+  await check('removing a friend is blocked while you share a group', async () => {
+    const { error } = await a.rpc('remove_friend', { fid: meB.id });
+    assert.match(error?.message ?? '', /share a group|settle up/);
   });
 
   await b.removeChannel(channel);
