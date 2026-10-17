@@ -95,6 +95,11 @@ async function connectAndSignIn(page, shot, email = 'alex@demo.app') {
 await run('Friends home, filters and a friend', 'light', async (page, shot) => {
   await connectAndSignIn(page, shot);
   await shot('friends');
+  await label(page, 'Search friends').click();
+  await visible(page.getByPlaceholder('Search by name or email')).fill('chris');
+  await text(page, 'Chris Park').waitFor();
+  await shot('friends-search');
+  await label(page, 'Close search').click();
   await button(page, 'You owe').click();
   await shot('friends-you-owe');
   await button(page, 'All').click();
@@ -105,6 +110,11 @@ await run('Friends home, filters and a friend', 'light', async (page, shot) => {
   await tab(page, 'Groups').click();
   await text(page, 'Flat 4B').waitFor();
   await shot('groups');
+  await label(page, 'Search groups').click();
+  await visible(page.getByPlaceholder('Search groups')).fill('goa');
+  await text(page, 'Goa Trip').waitFor();
+  await shot('groups-search');
+  await label(page, 'Close search').click();
   await text(page, 'Flat 4B').click();
   await button(page, 'Balances').waitFor();
   await shot('group');
@@ -113,6 +123,16 @@ await run('Friends home, filters and a friend', 'light', async (page, shot) => {
   await button(page, 'Balances').click();
   await text(page, 'Suggested payments').waitFor();
   await shot('group-balances');
+});
+
+await run('Opening animation', 'light', async (page) => {
+  // frames of the logo tearing open (the flow starts right after the page loads)
+  for (const ms of [0, 450, 350, 250, 250]) {
+    await page.waitForTimeout(ms);
+    const file = `${String(++step).padStart(2, '0')}-light-intro.png`;
+    await page.screenshot({ path: join(SHOTS, file) });
+    console.log(`  📸 ${file}`);
+  }
 });
 
 await run('Add an expense with a custom split', 'light', async (page, shot) => {
@@ -183,8 +203,6 @@ await run('Activity and account sections', 'light', async (page, shot) => {
 
   await tab(page, 'Account').click();
   await button(page, 'Buy me a coffee').waitFor();
-  await visible(page.locator('canvas')).waitFor(); // the coffee animation
-  await page.waitForTimeout(2500); // let it play through
   await shot('account');
   await label(page, 'Show my QR code').click();
   await text(page, 'Friends can scan this in SplitWiser → Add friend to add you instantly.').waitFor();
