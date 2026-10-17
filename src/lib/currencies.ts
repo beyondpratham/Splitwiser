@@ -49,3 +49,32 @@ export const CURRENCIES: Currency[] = [
 ];
 
 export const currencyByCode = (code: string) => CURRENCIES.find((c) => c.code === code);
+
+/** Shown first in the currency picker. */
+export const POPULAR = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'CAD', 'AUD'];
+
+const symbolCache = new Map<string, string>();
+
+// Local symbols where the platform only knows the ISO code.
+const SYMBOLS: Record<string, string> = {
+  AED: 'د.إ', SAR: '﷼', CHF: 'Fr', MYR: 'RM', IDR: 'Rp', ZAR: 'R', EGP: 'E£', PKR: 'Rs', LKR: 'Rs', NPR: 'Rs',
+  BDT: '৳', KES: 'KSh', CZK: 'Kč', HUF: 'Ft', SEK: 'kr', NOK: 'kr', DKK: 'kr', PLN: 'zł', TRY: '₺',
+};
+
+/** The currency's own symbol (₹, $, €, ¥…), falling back to its code. */
+export function currencySymbol(code: string): string {
+  let s = symbolCache.get(code);
+  if (s === undefined) {
+    try {
+      s =
+        SYMBOLS[code] ??
+        new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })
+          .formatToParts(0)
+          .find((p) => p.type === 'currency')?.value ?? code;
+    } catch {
+      s = code;
+    }
+    symbolCache.set(code, s);
+  }
+  return s;
+}

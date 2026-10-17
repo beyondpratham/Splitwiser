@@ -21,7 +21,7 @@ import {
   useUpdateGroup,
 } from '@/lib/api';
 import { entries, summarizeBalances } from '@/lib/balances';
-import { currencyByCode } from '@/lib/currencies';
+import { currencySymbol } from '@/lib/currencies';
 import { useTheme } from '@/theme';
 
 export default function GroupSettings() {
@@ -58,7 +58,7 @@ export default function GroupSettings() {
             if (name && name !== g.name) update.mutateAsync({ id: g.id, name }).catch(fail);
           }}
         />
-        <ListItem left={<Tile icon="currency-usd" />} title="Default currency" detail={`${currencyByCode(g.default_currency)?.flag ?? ''} ${g.default_currency}`} chevron onPress={() => setSheet('currency')} />
+        <ListItem left={<Tile icon="currency-usd" />} title="Default currency" detail={`${currencySymbol(g.default_currency)}  ${g.default_currency}`} chevron onPress={() => setSheet('currency')} />
       </ListGroup>
 
       <ListGroup footer="Combines debts so the fewest payments settle everyone. Nobody ends up paying more overall." animateIndex={1}>
@@ -84,7 +84,7 @@ export default function GroupSettings() {
           return (
             <ListItem
               key={profile_id}
-              left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+              left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} avatar={p?.avatar} />}
               title={profile_id === me.id ? `${p?.name} (you)` : p?.name ?? '…'}
               subtitle={p?.user_id ? p.email ?? undefined : `${p?.email ?? ''} · invited`}
             />
@@ -135,7 +135,7 @@ export default function GroupSettings() {
             candidates.map((f) => (
               <ListItem
                 key={f.id}
-                left={<Avatar name={f.name} color={f.avatar_color} />}
+                left={<Avatar name={f.name} color={f.avatar_color} avatar={f.avatar} />}
                 title={f.name}
                 subtitle={f.email ?? undefined}
                 right={<Icon name="plus-circle-outline" color={t.accentText} />}

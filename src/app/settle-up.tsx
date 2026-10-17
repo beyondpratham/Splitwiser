@@ -8,12 +8,11 @@ import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
-import { CurrencyPicker } from '@/components/Pickers';
+import { CurrencyMark, CurrencyPicker } from '@/components/Pickers';
 import { T } from '@/components/Text';
 import { EmptyState } from '@/components/ui';
 import { useGroup, useGroupBalances, useGroupPairDebts, useMe, useMyBalances, usePeople, useSaveExpense } from '@/lib/api';
 import { entries, firstName, groupDebts, summarizeBalances } from '@/lib/balances';
-import { currencyByCode } from '@/lib/currencies';
 import { formatMoney, fromMinor, parseAmount, toMinor } from '@/lib/money';
 import { friendlyError } from '@/lib/supabase';
 import { font, motion, space, useTheme } from '@/theme';
@@ -62,7 +61,7 @@ export default function SettleUp() {
               return (
                 <ListItem
                   key={i}
-                  left={<Avatar name={other?.name ?? '?'} color={other?.avatar_color ?? '#999'} />}
+                  left={<Avatar name={other?.name ?? '?'} color={other?.avatar_color ?? '#999'} avatar={other?.avatar} />}
                   title={other?.name ?? '…'}
                   subtitle={
                     <T variant="caption" tone={iOwe ? 'owe' : 'owed'}>
@@ -137,7 +136,7 @@ export default function SettleUp() {
   return (
     <Page title="Settle up" variant="dialog" form>
       <View style={styles.people}>
-        <Person name={payer?.name ?? '?'} color={payer?.avatar_color ?? '#999'} label={firstName(payer, me?.id)} />
+        <Person name={payer?.name ?? '?'} color={payer?.avatar_color ?? '#999'} avatar={payer?.avatar} label={firstName(payer, me?.id)} />
         <Animated.View style={[spinStyle, { marginBottom: 28 }]}>
           <Glass variant="pill" onPress={() => {
             haptic.tap();
@@ -148,7 +147,7 @@ export default function SettleUp() {
             <Icon name="arrow-right" size={22} color={t.accentText} />
           </Glass>
         </Animated.View>
-        <Person name={payee?.name ?? '?'} color={payee?.avatar_color ?? '#999'} label={firstName(payee, me?.id)} />
+        <Person name={payee?.name ?? '?'} color={payee?.avatar_color ?? '#999'} avatar={payee?.avatar} label={firstName(payee, me?.id)} />
       </View>
       <T variant="body" tone="dim" style={styles.caption}>
         {firstName(payer, me?.id)} {from === me?.id ? 'pay' : 'paid'} {firstName(payee, me?.id).replace(/^You$/, 'you')}
@@ -157,7 +156,7 @@ export default function SettleUp() {
 
       <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.section}>
         <Glass variant="pane" tint={t.accentSoft} contentStyle={styles.amountCard}>
-          <Chip label={cur} leading={<T>{currencyByCode(cur)?.flag}</T>} onPress={() => setCurrencyOpen(true)} />
+          <Chip label={cur} leading={<CurrencyMark code={cur} size={24} />} onPress={() => setCurrencyOpen(true)} />
           <TextInput
             value={amountText}
             onChangeText={setAmountText}
@@ -196,10 +195,10 @@ export default function SettleUp() {
   );
 }
 
-function Person({ name, color, label }: { name: string; color: string; label: string }) {
+function Person({ name, color, avatar, label }: { name: string; color: string; avatar?: string | null; label: string }) {
   return (
     <Animated.View key={name} entering={ZoomIn.springify().damping(12)} style={{ alignItems: 'center', gap: space.sm, width: 104 }}>
-      <Avatar name={name} color={color} size={76} />
+      <Avatar name={name} color={color} avatar={avatar} size={76} />
       <T variant="subhead" numberOfLines={1}>
         {label}
       </T>

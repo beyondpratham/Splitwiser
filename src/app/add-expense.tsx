@@ -9,14 +9,13 @@ import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
-import { CategoryPicker, CurrencyPicker } from '@/components/Pickers';
+import { CategoryPicker, CurrencyMark, CurrencyPicker } from '@/components/Pickers';
 import { Sheet } from '@/components/Sheet';
 import { T } from '@/components/Text';
 import { Loading } from '@/components/ui';
 import { useExpense, useFriends, useGroups, useMe, usePeople, useSaveExpense } from '@/lib/api';
 import { firstName } from '@/lib/balances';
 import { categoryById, guessCategory } from '@/lib/categories';
-import { currencyByCode } from '@/lib/currencies';
 import { computeSplit, currencyDecimals, dayToDate, distribute, formatMoney, fromMinor, parseAmount, toMinor, type SplitType } from '@/lib/money';
 import { friendlyError } from '@/lib/supabase';
 import { font, space, useTheme } from '@/theme';
@@ -249,7 +248,7 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
           />
         </View>
         <View style={[styles.amountRow, { borderTopColor: t.line }]}>
-          <Chip label={cur} leading={<T>{currencyByCode(cur)?.flag ?? '💱'}</T>} onPress={() => setSheet('currency')} />
+          <Chip label={cur} leading={<CurrencyMark code={cur} size={24} />} onPress={() => setSheet('currency')} />
           <TextInput
             value={amountText}
             onChangeText={setAmountText}
@@ -353,7 +352,7 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
             return (
               <ListItem
                 key={f.id}
-                left={<Avatar name={f.name} color={f.avatar_color} />}
+                left={<Avatar name={f.name} color={f.avatar_color} avatar={f.avatar} />}
                 title={f.name}
                 subtitle={f.email ?? undefined}
                 right={<Check checked={on} onPress={toggle} label={f.name} />}
@@ -387,7 +386,7 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
               return (
                 <ListItem
                   key={id}
-                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} avatar={p?.avatar} />}
                   title={name(id)}
                   right={
                     payerMode === 'single' ? (
@@ -433,7 +432,7 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
               return (
                 <ListItem
                   key={id}
-                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} avatar={p?.avatar} />}
                   title={name(id)}
                   subtitle={splitType === 'percent' || splitType === 'shares' ? share : undefined}
                   right={
@@ -479,7 +478,7 @@ function ExpenseForm({ initial, params }: { initial: FormState; params: Params }
 function AmountInput({ value, onChange, suffix, label }: { value: string; onChange: (v: string) => void; suffix: string; label: string }) {
   const t = useTheme();
   return (
-    <Glass radius={14} contentStyle={styles.inline}>
+    <Glass contentStyle={styles.inline}>
       <TextInput
         value={value}
         onChangeText={onChange}

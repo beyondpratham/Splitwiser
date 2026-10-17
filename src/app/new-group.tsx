@@ -11,7 +11,7 @@ import { CurrencyPicker, EmojiPicker } from '@/components/Pickers';
 import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
 import { useCreateGroup, useFriends, useMe } from '@/lib/api';
-import { currencyByCode } from '@/lib/currencies';
+import { currencySymbol } from '@/lib/currencies';
 import { friendlyError } from '@/lib/supabase';
 import type { GroupKind } from '@/lib/types';
 import { space, useTheme } from '@/theme';
@@ -75,7 +75,7 @@ export default function NewGroup() {
       </View>
 
       <ListGroup>
-        <ListItem left={<Tile icon="currency-usd" />} title="Currency" detail={`${currencyByCode(cur)?.flag ?? ''} ${cur}`} chevron onPress={() => setSheet('currency')} />
+        <ListItem left={<Tile icon="currency-usd" />} title="Currency" detail={`${currencySymbol(cur)}  ${cur}`} chevron onPress={() => setSheet('currency')} />
       </ListGroup>
 
       <ListGroup title="Members" footer={friends.length === 0 ? 'Add friends first, or add people to the group later.' : `${members.length + 1} people including you`}>
@@ -86,7 +86,7 @@ export default function NewGroup() {
             setMembers(on ? members.filter((x) => x !== f.id) : [...members, f.id]);
           };
           return (
-            <ListItem key={f.id} left={<Avatar name={f.name} color={f.avatar_color} />} title={f.name} subtitle={f.email ?? undefined} right={<Check checked={on} onPress={toggle} label={f.name} />} onPress={toggle} />
+            <ListItem key={f.id} left={<Avatar name={f.name} color={f.avatar_color} avatar={f.avatar} />} title={f.name} subtitle={f.email ?? undefined} right={<Check checked={on} onPress={toggle} label={f.name} />} onPress={toggle} />
           );
         })}
         <ListItem left={<Icon name="account-plus-outline" size={24} color={t.accentText} />} title="Add a new friend" tone="accent" chevron onPress={() => router.push('/add-friend')} />

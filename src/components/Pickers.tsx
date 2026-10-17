@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text as RNText, View } from 'react-native';
 import { CATEGORIES } from '@/lib/categories';
-import { CURRENCIES } from '@/lib/currencies';
-import { space, useTheme, withAlpha } from '@/theme';
+import { CURRENCIES, currencySymbol, POPULAR } from '@/lib/currencies';
+import { space, useTheme, withAlpha, R } from '@/theme';
 import { Field, haptic } from './Controls';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
@@ -25,32 +25,68 @@ export function CurrencyPicker(props: PickerProps<string>) {
   );
 }
 
+/** A currency's symbol on a small tinted tile. */
+export function CurrencyMark({ code, size = 40 }: { code: string; size?: number }) {
+  const t = useTheme();
+  const symbol = currencySymbol(code);
+  return (
+    <View style={[styles.mark, { width: size, height: size, backgroundColor: t.accentSoft, borderRadius: Math.min(R, size * 0.32) }]}>
+      <T variant="subhead" numberOfLines={1} adjustsFontSizeToFit style={{ color: t.accentText, fontSize: symbol.length > 2 ? size * 0.3 : size * 0.45 }}>
+        {symbol}
+      </T>
+    </View>
+  );
+}
+
 function CurrencyList({ value, onSelect }: PickerProps<string>) {
   const t = useTheme();
   const { close } = useSheet();
   const [q, setQ] = useState('');
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return CURRENCIES.filter((c) => !s || c.code.toLowerCase().includes(s) || c.name.toLowerCase().includes(s));
+    return CURRENCIES.filter((c) => !s || c.code.toLowerCase().includes(s) || c.name.toLowerCase().includes(s) || currencySymbol(c.code).includes(s));
   }, [q]);
+  const pick = (code: string) => {
+    haptic.tap();
+    onSelect(code);
+    close();
+  };
   return (
     <>
       <View style={{ paddingHorizontal: space.lg, marginBottom: space.lg }}>
-        <Field icon="magnify" placeholder="Search currencies" value={q} onChangeText={setQ} autoCorrect={false} />
+        <Field icon="magnify" placeholder="Search by name, code or symbol" value={q} onChangeText={setQ} autoCorrect={false} />
       </View>
-      <ListGroup>
+      {!q && (
+        <View style={styles.popular}>
+          <T variant="overline" tone="dim" style={{ marginLeft: space.sm, marginBottom: space.sm }}>
+            Popular
+          </T>
+          <View style={styles.grid}>
+            {POPULAR.map((code) => {
+              const on = code === value;
+              return (
+                <Glass key={code} style={styles.popCell} tint={on ? t.accentSoft : undefined} onPress={() => pick(code)} accessibilityLabel={code} accessibilityState={{ selected: on }} contentStyle={styles.popInner}>
+                  <T variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ color: on ? t.accentText : t.ink }}>
+                    {currencySymbol(code)}
+                  </T>
+                  <T variant="caption" tone={on ? 'accent' : 'dim'}>
+                    {code}
+                  </T>
+                </Glass>
+              );
+            })}
+          </View>
+        </View>
+      )}
+      <ListGroup title={q ? undefined : 'All currencies'}>
         {list.map((c) => (
           <ListItem
             key={c.code}
-            left={<RNText style={{ fontSize: 26 }}>{c.flag}</RNText>}
+            left={<CurrencyMark code={c.code} />}
             title={c.code}
             subtitle={c.name}
             right={c.code === value ? <Icon name="check-circle" color={t.accent} /> : undefined}
-            onPress={() => {
-              haptic.tap();
-              onSelect(c.code);
-              close();
-            }}
+            onPress={() => pick(c.code)}
           />
         ))}
       </ListGroup>
@@ -83,7 +119,6 @@ function CategoryGrid({ value, onSelect }: PickerProps<string>) {
               return (
                 <Glass
                   key={c.id}
-                  radius={20}
                   style={styles.catCell}
                   tint={on ? t.accentSoft : undefined}
                   onPress={() => {
@@ -150,10 +185,14 @@ function EmojiGrid({ value, onSelect }: PickerProps<string>) {
 }
 
 const styles = StyleSheet.create({
+  mark: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  popular: { paddingHorizontal: space.lg, marginBottom: space.xl },
+  popCell: { width: '23%' },
+  popInner: { alignItems: 'center', justifyContent: 'center', gap: 2, height: 68 },
   catGroup: { paddingHorizontal: space.lg, marginBottom: space.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   catCell: { width: '31.6%' },
   catInner: { alignItems: 'center', gap: space.sm, paddingVertical: space.md, paddingHorizontal: space.xs },
-  catIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  emoji: { width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth * 2 },
+  catIcon: { width: 44, height: 44, borderRadius: R, alignItems: 'center', justifyContent: 'center' },
+  emoji: { width: 60, height: 60, borderRadius: R, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth * 2 },
 });
