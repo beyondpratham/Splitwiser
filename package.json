@@ -65,7 +65,7 @@
     "db:login": "supabase login",
     "db:link": "supabase link",
     "db:push": "supabase db push",
-    "test": "node --test scripts/money.test.ts scripts/import.test.ts scripts/notifications.test.ts && node scripts/test-db.mjs",
+    "test": "node --test scripts/money.test.ts scripts/import.test.ts scripts/notifications.test.ts && node scripts/test-db.mjs && node scripts/test-schema.mjs",
     "test:db": "node scripts/test-db.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
@@ -81,7 +81,8 @@
     "ui:check": "node scripts/ui-check.mjs",
     "local": "node scripts/local.mjs",
     "local:android": "bash scripts/emulator.sh",
-    "test:remote": "node scripts/smoke-remote.mjs"
+    "test:remote": "node scripts/smoke-remote.mjs",
+    "db:schema": "node scripts/build-schema.mjs"
   },
   "private": true
 }
