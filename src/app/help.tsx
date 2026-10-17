@@ -1,15 +1,16 @@
 import Constants from 'expo-constants';
 import { Fragment, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, Share, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { haptic } from '@/components/Controls';
+import { useFeedback } from '@/components/Feedback';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
-import { ISSUES_URL, REPO_URL, SUPPORT_EMAIL } from '@/lib/support';
+import { APP_LINK, ISSUES_URL, REPO_URL, SUPPORT_EMAIL } from '@/lib/support';
 import { space, useTheme } from '@/theme';
 
 const FAQ = [
@@ -50,6 +51,15 @@ const FAQ = [
 export default function Help() {
   const t = useTheme();
   const [open, setOpen] = useState<number | null>(0);
+  const { toast } = useFeedback();
+
+  const shareApp = async () => {
+    try {
+      await Share.share({ message: `I split bills with friends on SplitWiser — free, no ads, no limits. Get it here: ${APP_LINK}` });
+    } catch {
+      toast('Sharing isn’t available here.');
+    }
+  };
 
   return (
     <Page title="Help & support" back variant="large">
@@ -101,6 +111,10 @@ export default function Help() {
         ) : null}
         <ListItem left={<Tile icon="bug-outline" />} title="Report a problem" subtitle="Opens an issue on GitHub" chevron onPress={() => Linking.openURL(ISSUES_URL)} />
         <ListItem left={<Tile icon="github" />} title="Source code" subtitle="SplitWiser is open source" chevron onPress={() => Linking.openURL(REPO_URL)} />
+      </ListGroup>
+
+      <ListGroup title="Spread the word">
+        <ListItem left={<Tile icon="share-variant-outline" />} title="Share SplitWiser" subtitle="Invite friends to the app" chevron onPress={shareApp} />
       </ListGroup>
 
       <T variant="caption" tone="faint" style={{ textAlign: 'center' }}>
