@@ -18,6 +18,12 @@ export function envConfig(): BackendConfig | null {
   return { url, key };
 }
 
+/**
+ * Release builds made with the Supabase URL and key built in (EAS environment variables) always use that
+ * project: no server setup screen, no local server, no Server row in Settings.
+ */
+export const backendLocked = !__DEV__ && envConfig() !== null;
+
 function makeClient(config: BackendConfig | null) {
   return createClient(config?.url ?? 'https://placeholder.supabase.co', config?.key ?? 'placeholder', {
     auth: {
@@ -41,6 +47,7 @@ export const supabase = new Proxy({} as SupabaseClient, {
 
 /** Stored (runtime) config wins over the build-time one. */
 export async function loadConfig(): Promise<BackendConfig | null> {
+  if (backendLocked) return envConfig();
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as BackendConfig;
