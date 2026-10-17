@@ -9,6 +9,7 @@ import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AppLock } from '@/components/AppLock';
+import { Intro } from '@/components/Intro';
 import { FeedbackProvider, useFeedback } from '@/components/Feedback';
 import { Loading } from '@/components/ui';
 import { useRealtimeSync } from '@/lib/api';
@@ -120,6 +121,7 @@ export default function RootLayout() {
               <FeedbackProvider describeError={friendlyError}>
                 <RootStack />
                 <AppLock />
+                <Intro />
               </FeedbackProvider>
             </AuthProvider>
           </QueryClientProvider>
