@@ -1,9 +1,7 @@
 import Constants from 'expo-constants';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Avatar } from '@/components/Avatar';
 import { CoffeeCup } from '@/components/CoffeeCup';
@@ -62,22 +60,10 @@ export default function Account() {
                   )}
                 </View>
               </Pressable>
-              {/* the QR sits behind frosted glass until tapped */}
-              <Pressable onPress={() => setQrOpen(true)} accessibilityRole="button" accessibilityLabel="Show my QR code" style={({ pressed }) => [styles.qrThumb, pressed && { transform: [{ scale: 0.96 }] }]}>
+              <Pressable onPress={() => setQrOpen(true)} accessibilityRole="button" accessibilityLabel="Show my QR code" style={({ pressed }) => [styles.qrThumb, { borderColor: t.line }, pressed && { transform: [{ scale: 0.96 }] }]}>
                 <View style={styles.qrBox}>
-                  <QrCode value={profileQrValue(me)} size={50} color={qrColor(me)} />
+                  <QrCode value={profileQrValue(me)} size={56} color={qrColor(me)} />
                 </View>
-                {Platform.OS !== 'android' && <BlurView intensity={10} tint={t.blurTint} style={StyleSheet.absoluteFill} />}
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: t.glassTint }]} />
-                <LinearGradient pointerEvents="none" colors={[t.sheen, 'transparent']} locations={[0, 0.45]} style={StyleSheet.absoluteFill} />
-                <LinearGradient
-                  pointerEvents="none"
-                  colors={['transparent', t.sheenDiag, 'transparent']}
-                  start={{ x: 0, y: 0.1 }}
-                  end={{ x: 1, y: 0.9 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.qrRim, { borderTopColor: t.rimTop, borderLeftColor: t.rimSide, borderRightColor: t.rimSide, borderBottomColor: t.rimBottom }]} />
               </Pressable>
             </Glass>
           </Animated.View>
@@ -146,9 +132,8 @@ const styles = StyleSheet.create({
   section: { marginHorizontal: space.lg, marginBottom: space.lg },
   profile: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.sm },
   profileTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.sm, borderRadius: R - 6 },
-  qrThumb: { width: 72, height: 72, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', marginRight: space.xs },
+  qrThumb: { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: StyleSheet.hairlineWidth, marginRight: space.xs },
   qrBox: { padding: 2 },
-  qrRim: { borderRadius: 22, borderWidth: 1 },
   insights: { flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, padding: space.lg },
   insightsLink: { flexDirection: 'row', alignItems: 'center', marginTop: space.sm },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 60 },
