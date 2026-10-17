@@ -6,6 +6,8 @@ import { writeFileSync } from 'node:fs';
 const GREEN_TOP = '#22D08B';
 const GREEN_BOTTOM = '#0B9A64';
 const INK = '#0E9F6A'; // the "$" cut-out, sits between the two gradient stops
+/** Launch screen colour; the opening animation (src/components/Intro.tsx) starts from the same picture. */
+const BRAND = '#13B079';
 
 // The coin: centered at (512,512), radius 290, with a "$" as negative space.
 // It is cut along a line tilted ~22° from vertical; the two halves slide apart along that cut's normal.
@@ -86,7 +88,9 @@ function render(svgText, file, size) {
 
 writeFileSync('assets/icon.svg', icon);
 render(icon, 'assets/icon.png', 1024);
-render(splash, 'assets/splash-icon.png', 512);
+// Launch screen: the whole white coin on the brand green (set as the splash background in app.json).
+const launch = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${coin({ fill: '#FFFFFF', ink: BRAND })}</svg>`;
+render(launch, 'assets/splash-icon.png', 512);
 render(foreground, 'assets/android-icon-foreground.png', 1024);
 render(androidBg, 'assets/android-icon-background.png', 1024);
 render(monochrome, 'assets/android-icon-monochrome.png', 1024);
