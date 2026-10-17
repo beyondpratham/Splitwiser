@@ -2,7 +2,7 @@ import { BlurTargetView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useRef, useState, type ReactNode } from 'react';
-import { Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, {
   interpolate,
@@ -13,7 +13,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { motion, space, useTheme, PILL } from '@/theme';
+import { font, motion, space, useTheme, PILL } from '@/theme';
 import { Button, haptic, IconButton } from './Controls';
 import { Backdrop, BlurTargetContext, Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
@@ -31,8 +31,18 @@ interface Action {
   onPress: () => void;
 }
 
+/** A search icon beside the large title that expands into a search bar. */
+export interface PageSearch {
+  value: string;
+  onChange: (query: string) => void;
+  placeholder: string;
+  /** accessibility label of the search button, e.g. "Search friends" */
+  label: string;
+}
+
 interface Props {
   title: string;
+  search?: PageSearch;
   variant?: PageVariant;
   back?: boolean;
   actions?: Action[];
@@ -53,7 +63,7 @@ const BAR = 60;
 const HERO_THRESHOLD = 150;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function Page({ title, variant = 'small', back, actions, menu, confirm, fab, inTabs, refreshing, onRefresh, form, children }: Props) {
+export function Page({ title, variant = 'small', back, actions, search, menu, confirm, fab, inTabs, refreshing, onRefresh, form, children }: Props) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
@@ -80,7 +90,7 @@ export function Page({ title, variant = 'small', back, actions, menu, confirm, f
 
   const content = (
     <>
-      {variant === 'large' && <LargeTitle title={title} scrollY={scrollY} />}
+      {variant === 'large' && <LargeTitle title={title} scrollY={scrollY} actions={actions} search={search} />}
       {children}
     </>
   );
@@ -119,7 +129,7 @@ export function Page({ title, variant = 'small', back, actions, menu, confirm, f
           title={title}
           variant={variant}
           back={back}
-          actions={actions}
+          actions={variant === 'large' ? undefined : actions}
           hasMenu={!!menu?.length}
           onMenu={() => setMenuOpen(true)}
           confirm={confirm}
@@ -134,7 +144,26 @@ export function Page({ title, variant = 'small', back, actions, menu, confirm, f
   );
 }
 
-function LargeTitle({ title, scrollY }: { title: string; scrollY: SharedValue<number> }) {
+const HEADER_BUTTON = 44;
+
+/** The page title, with its actions and an expanding search bar on the right. */
+function LargeTitle({ title, scrollY, actions, search }: { title: string; scrollY: SharedValue<number>; actions?: Action[]; search?: PageSearch }) {
+  const t = useTheme();
+  const [open, setOpen] = useState(false);
+  const [rowWidth, setRowWidth] = useState(0);
+  const progress = useSharedValue(0);
+
+  const toggle = (next: boolean) => {
+    haptic.tap();
+    setOpen(next);
+    progress.set(withSpring(next ? 1 : 0, motion.smooth));
+    if (!next) search?.onChange('');
+  };
+
+  const fadeOut = useAnimatedStyle(() => ({ opacity: interpolate(progress.get(), [0, 0.5], [1, 0], 'clamp') }));
+  const bar = useAnimatedStyle(() => ({ width: interpolate(progress.get(), [0, 1], [HEADER_BUTTON, Math.max(rowWidth, HEADER_BUTTON)]) }));
+  const inner = useAnimatedStyle(() => ({ opacity: interpolate(progress.get(), [0.3, 1], [0, 1], 'clamp') }));
+
   const style = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.get(), [0, 44], [1, 0], 'clamp'),
     transform: [
@@ -145,9 +174,46 @@ function LargeTitle({ title, scrollY }: { title: string; scrollY: SharedValue<nu
   }));
   return (
     <Animated.View style={[styles.largeTitle, style]}>
-      <T variant="display" numberOfLines={1}>
-        {title}
-      </T>
+      <View style={styles.headerRow} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
+        <Animated.View style={[styles.headerTitle, fadeOut]} pointerEvents={open ? 'none' : 'auto'}>
+          <T variant="display" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {title}
+          </T>
+          <View style={styles.headerActions}>
+            {actions?.map((a) => <IconButton key={a.label} icon={a.icon} label={a.label} size={HEADER_BUTTON} onPress={a.onPress} />)}
+            {search && <View style={{ width: HEADER_BUTTON }} />}
+          </View>
+        </Animated.View>
+
+        {search && (
+          <Animated.View style={[styles.searchBar, bar]}>
+            <Glass variant="pill" blur={open} style={{ flex: 1 }} contentStyle={styles.searchInner} tint={open ? t.accentSoft : undefined}>
+              <Pressable onPress={() => !open && toggle(true)} accessibilityRole="button" accessibilityLabel={open ? 'Search' : search.label} style={styles.searchIcon}>
+                <Icon name="magnify" size={22} color={open ? t.accentText : t.ink} />
+              </Pressable>
+              {open && (
+                <Animated.View style={[styles.searchField, inner]}>
+                  <TextInput
+                    autoFocus
+                    value={search.value}
+                    onChangeText={search.onChange}
+                    placeholder={search.placeholder}
+                    placeholderTextColor={t.inkFaint}
+                    selectionColor={t.accent}
+                    cursorColor={t.accent}
+                    autoCorrect={false}
+                    returnKeyType="search"
+                    style={[styles.searchInput, { color: t.ink, fontFamily: font.regular }]}
+                  />
+                  <Pressable onPress={() => toggle(false)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close search" style={styles.searchIcon}>
+                    <Icon name="close" size={20} color={t.inkDim} />
+                  </Pressable>
+                </Animated.View>
+              )}
+            </Glass>
+          </Animated.View>
+        )}
+      </View>
     </Animated.View>
   );
 }
@@ -245,7 +311,15 @@ const styles = StyleSheet.create({
   barFade: { position: 'absolute', left: 0, right: 0, bottom: -18, height: 18, opacity: 0.6 },
   barRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg },
   barTitle: { flex: 1, paddingHorizontal: space.xs },
-  largeTitle: { paddingHorizontal: space.xl, paddingTop: space.xs, paddingBottom: space.lg },
+  largeTitle: { paddingLeft: space.xl, paddingRight: space.lg, paddingTop: space.xs, paddingBottom: space.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', minHeight: HEADER_BUTTON },
+  headerTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  headerActions: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  searchBar: { position: 'absolute', right: 0, top: 0, bottom: 0, justifyContent: 'center' },
+  searchInner: { flexDirection: 'row', alignItems: 'center', height: HEADER_BUTTON, overflow: 'hidden' },
+  searchIcon: { width: HEADER_BUTTON, height: HEADER_BUTTON, alignItems: 'center', justifyContent: 'center' },
+  searchField: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 0, height: HEADER_BUTTON, outlineStyle: 'none' } as never,
   fab: {
     position: 'absolute',
     right: space.lg,
