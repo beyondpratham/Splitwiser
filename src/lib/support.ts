@@ -28,3 +28,6 @@ export function upiLink(amount = COFFEE_AMOUNT_INR) {
   const params = new URLSearchParams({ pa: UPI_ID, pn: UPI_NAME, am: String(amount), cu: 'INR', tn: 'Coffee for SplitWiser' });
   return `upi://pay?${params.toString()}`;
 }
+
+/** Link shared by "Share SplitWiser". Switch to the Play Store listing once the app is published. */
+export const APP_LINK = REPO_URL;
