@@ -44,7 +44,7 @@ export function ExpenseList({
           <T variant="overline" tone="dim" style={styles.monthLabel}>
             {monthLabel(k)}
           </T>
-          <Glass variant="pane" radius={26}>
+          <Glass variant="pane">
             {list.map((e, i) => (
               <Fragment key={e.id}>
                 <ExpenseRow e={e} people={people} meId={meId} groupName={e.group_id ? groupNames?.get(e.group_id) : groupNames ? 'Non-group' : undefined} />

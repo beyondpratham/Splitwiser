@@ -13,7 +13,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { font, motion, radius, space, useTheme } from '@/theme';
+import { font, motion, space, useTheme, R } from '@/theme';
 import { Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
 import { T } from './Text';
@@ -179,7 +179,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field({ label, i
           {label}
         </T>
       )}
-      <Glass radius={radius.md} tint={focused ? t.accentSoft : undefined} style={focused ? { boxShadow: `0px 0px 0px 1.5px ${t.accent}` } : undefined}>
+      <Glass tint={focused ? t.accentSoft : undefined} style={focused ? { boxShadow: `0px 0px 0px 1.5px ${t.accent}` } : undefined}>
         <View style={[styles.field, multiline && { alignItems: 'flex-start', paddingVertical: 12 }]}>
           {icon && <Icon name={icon} size={20} color={focused ? t.accentText : t.inkDim} />}
           <TextInput
@@ -363,11 +363,11 @@ export function Chip({
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   buttonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
-  primary: { borderRadius: radius.pill, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth * 2 },
+  primary: { borderRadius: R, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth * 2 },
   field: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, minHeight: 52 },
   input: { flex: 1, paddingVertical: 12, outlineStyle: 'none' } as never,
   segRow: { flexDirection: 'row' },
-  segThumb: { position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth },
+  segThumb: { position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: R - 4, borderWidth: StyleSheet.hairlineWidth },
   segItem: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', height: 38, paddingHorizontal: 6 },
   switch: { width: 50, height: 30, borderRadius: 16, justifyContent: 'center', overflow: 'hidden' },
   knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFFFFF' },

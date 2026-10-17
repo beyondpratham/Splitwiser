@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { createContext, useContext, type ReactNode, type RefObject } from 'react';
 import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { motion, radius as R, useTheme } from '@/theme';
+import { motion, R, useTheme } from '@/theme';
 
 /** Android only blurs content inside a BlurTargetView; screens provide theirs through this context. */
 export const BlurTargetContext = createContext<RefObject<View | null> | null>(null);
@@ -56,7 +56,7 @@ export function Glass({
   const t = useTheme();
   const target = useContext(BlurTargetContext);
   const pressed = useSharedValue(0);
-  const r = radius ?? (variant === 'pill' ? R.pill : variant === 'pane' ? R.pane : variant === 'chrome' ? R.xl : R.lg);
+  const r = radius ?? R;
 
   const drop =
     variant === 'pane' || variant === 'chrome'
@@ -131,15 +131,10 @@ export function Glass({
   );
 }
 
-/** Soft ambient background the glass sits on: grey-white (or black) with a faint green glow. */
+/** The solid app background the glass sits on: very light green (light) or deep green (dark). */
 export function Backdrop() {
   const t = useTheme();
-  return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: t.bg }]}>
-      <LinearGradient colors={[t.bgGlow, 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 0.75, y: 0.55 }} style={StyleSheet.absoluteFill} />
-      <LinearGradient colors={['transparent', t.bgGlow2]} start={{ x: 0.2, y: 0.4 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-    </View>
-  );
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: t.bg }]} />;
 }
 
 const styles = StyleSheet.create({

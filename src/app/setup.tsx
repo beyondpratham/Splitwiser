@@ -29,5 +29,5 @@ export default function Setup() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: space.lg, paddingHorizontal: space.xl, marginBottom: space.xl },
-  logo: { width: 96, height: 96, borderRadius: 28 },
+  logo: { width: 96, height: 96, borderRadius: 24 },
 });

@@ -6,7 +6,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { motion, space, useTheme } from '@/theme';
+import { motion, space, useTheme, R } from '@/theme';
 import { Button, haptic } from './Controls';
 import { Icon, type IconName } from './Icon';
 import { T } from './Text';
@@ -172,13 +172,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: R + 8,
+    borderTopRightRadius: R + 8,
     overflow: 'hidden',
     borderTopWidth: StyleSheet.hairlineWidth * 2,
   },
   handleArea: { alignItems: 'center', paddingTop: 12, paddingBottom: 10 },
   handle: { width: 38, height: 5, borderRadius: 3, opacity: 0.6 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xl, paddingBottom: space.md, gap: space.md },
-  action: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, height: 56, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
+  action: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, height: 56, borderRadius: R, borderWidth: StyleSheet.hairlineWidth },
 });

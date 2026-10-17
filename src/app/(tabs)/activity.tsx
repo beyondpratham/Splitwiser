@@ -13,7 +13,7 @@ import { describeActivity, snapshotImpact, timeAgo } from '@/lib/activity';
 import { useActivity, useGroups, useMe, usePeople } from '@/lib/api';
 import { formatMoney } from '@/lib/money';
 import type { Activity, Profile } from '@/lib/types';
-import { space, useTheme } from '@/theme';
+import { space, useTheme, R } from '@/theme';
 
 function dayLabel(iso: string) {
   const d = new Date(iso);
@@ -77,7 +77,7 @@ export default function ActivityFeed() {
             <T variant="overline" tone="dim" style={styles.dayLabel}>
               {label}
             </T>
-            <Glass variant="pane" radius={26}>
+            <Glass variant="pane">
               {items.map((a, i) => (
                 <Fragment key={a.id}>
                   <ActivityRow a={a} meId={me?.id} people={byId} groupEmoji={groups.find((g) => g.id === a.group_id)?.emoji} />
@@ -122,7 +122,7 @@ function ActivityRow({ a, meId, people, groupEmoji }: { a: Activity; meId?: stri
         {leading}
         {actor && (
           <View style={styles.badge}>
-            <Avatar name={actor.name} color={actor.avatar_color} size={22} />
+            <Avatar name={actor.name} color={actor.avatar_color} avatar={actor.avatar} size={22} />
           </View>
         )}
       </View>
@@ -160,5 +160,5 @@ const styles = StyleSheet.create({
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 76 },
   strike: { textDecorationLine: 'line-through' },
   badge: { position: 'absolute', right: -6, bottom: -6 },
-  commentTile: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  commentTile: { width: 44, height: 44, borderRadius: R, alignItems: 'center', justifyContent: 'center' },
 });

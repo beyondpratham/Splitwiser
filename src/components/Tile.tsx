@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { useTheme } from '@/theme';
+import { useTheme, R } from '@/theme';
 import { Icon, type IconName } from './Icon';
 
 /** Small tinted icon tile for list rows. */
@@ -13,5 +13,5 @@ export function Tile({ icon, danger }: { icon: IconName; danger?: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  tile: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  tile: { width: 40, height: 40, borderRadius: R, alignItems: 'center', justifyContent: 'center' },
 });

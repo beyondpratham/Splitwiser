@@ -4,76 +4,75 @@
 
 export const light = {
   dark: false,
-  // surfaces
-  bg: '#E7E7E4', // grey-white, so glass stands off it
-  bgGlow: 'rgba(16,166,107,0.16)',
-  bgGlow2: 'rgba(255,255,255,0.75)',
-  solid: '#F4F4F2', // opaque fallback for sheets/dialog bodies
+  // surfaces: solid very light green
+  bg: '#E8F5EC',
+  solid: '#F4FBF6', // opaque fallback for sheets/dialog bodies
   // ink
-  ink: '#121212',
-  inkDim: '#5E5E5E',
-  inkFaint: '#9C9C9C',
-  line: 'rgba(18,18,18,0.08)',
+  ink: '#0E1A14',
+  inkDim: '#4E6158',
+  inkFaint: '#8FA399',
+  line: 'rgba(14,60,38,0.09)',
   // brand + meaning
   accent: '#10A66B',
   accentInk: '#FFFFFF',
   accentText: '#0A8556',
-  accentSoft: 'rgba(16,166,107,0.14)',
+  accentSoft: 'rgba(16,166,107,0.13)',
   owed: '#0A8556',
   owe: '#C2571E',
   oweSoft: 'rgba(194,87,30,0.12)',
   danger: '#D23B3B',
   dangerSoft: 'rgba(210,59,59,0.10)',
   // glass
-  glassTint: 'rgba(255,255,255,0.42)',
-  glassStrong: 'rgba(255,255,255,0.66)',
-  glassPressed: 'rgba(255,255,255,0.28)',
+  glassTint: 'rgba(255,255,255,0.58)',
+  glassStrong: 'rgba(255,255,255,0.82)',
+  glassPressed: 'rgba(16,166,107,0.08)',
   rimTop: 'rgba(255,255,255,0.95)',
-  rimSide: 'rgba(255,255,255,0.55)',
-  rimBottom: 'rgba(0,0,0,0.07)',
-  sheen: 'rgba(255,255,255,0.60)',
-  sheenDiag: 'rgba(255,255,255,0.20)',
-  drop: 'rgba(0,0,0,0.22)',
-  scrim: 'rgba(18,18,18,0.28)',
+  rimSide: 'rgba(255,255,255,0.6)',
+  rimBottom: 'rgba(14,60,38,0.08)',
+  sheen: 'rgba(255,255,255,0.65)',
+  sheenDiag: 'rgba(255,255,255,0.22)',
+  drop: 'rgba(14,70,44,0.20)',
+  scrim: 'rgba(8,32,22,0.30)',
   blurTint: 'light' as 'light' | 'dark',
 };
 
 export const dark: typeof light = {
   dark: true,
-  bg: '#000000',
-  bgGlow: 'rgba(47,208,140,0.14)',
-  bgGlow2: 'rgba(255,255,255,0.05)',
-  solid: '#141416',
-  ink: '#FFFFFF',
-  inkDim: '#9E9E9E',
-  inkFaint: '#5C5C5C',
-  line: 'rgba(255,255,255,0.10)',
+  // surfaces: solid deep green
+  bg: '#0A1F17',
+  solid: '#10291F',
+  ink: '#F2FBF6',
+  inkDim: '#9DB7AA',
+  inkFaint: '#5F7A6D',
+  line: 'rgba(255,255,255,0.08)',
   accent: '#2FD08C',
-  accentInk: '#00140B',
-  accentText: '#45DA9B',
-  accentSoft: 'rgba(47,208,140,0.16)',
-  owed: '#45DA9B',
+  accentInk: '#03170E',
+  accentText: '#4EDDA0',
+  accentSoft: 'rgba(47,208,140,0.15)',
+  owed: '#4EDDA0',
   owe: '#FF9B5C',
   oweSoft: 'rgba(255,155,92,0.14)',
   danger: '#FF6B6B',
   dangerSoft: 'rgba(255,107,107,0.14)',
-  glassTint: 'rgba(40,40,44,0.42)',
-  glassStrong: 'rgba(40,40,44,0.70)',
-  glassPressed: 'rgba(60,60,66,0.55)',
-  rimTop: 'rgba(255,255,255,0.30)',
-  rimSide: 'rgba(255,255,255,0.09)',
-  rimBottom: 'rgba(255,255,255,0.05)',
-  sheen: 'rgba(255,255,255,0.08)',
-  sheenDiag: 'rgba(255,255,255,0.06)',
-  drop: 'rgba(0,0,0,0.90)',
-  scrim: 'rgba(0,0,0,0.55)',
+  glassTint: 'rgba(255,255,255,0.06)',
+  glassStrong: 'rgba(16,44,33,0.92)',
+  glassPressed: 'rgba(255,255,255,0.08)',
+  rimTop: 'rgba(255,255,255,0.20)',
+  rimSide: 'rgba(255,255,255,0.07)',
+  rimBottom: 'rgba(0,0,0,0.25)',
+  sheen: 'rgba(255,255,255,0.07)',
+  sheenDiag: 'rgba(255,255,255,0.04)',
+  drop: 'rgba(0,0,0,0.55)',
+  scrim: 'rgba(0,8,5,0.60)',
   blurTint: 'dark',
 };
 
 export type Tokens = typeof light;
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
-export const radius = { sm: 12, md: 18, lg: 24, xl: 28, pane: 32, pill: 999 };
+/** One corner radius for every card, button, field, chip and sheet: slightly rounder than a rectangle. */
+export const R = 14;
+export const radius = { sm: R, md: R, lg: R, xl: R, pane: R, pill: R };
 
 export const font = {
   regular: 'Inter_400Regular',

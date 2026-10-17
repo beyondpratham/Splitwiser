@@ -91,7 +91,7 @@ export function FeedbackProvider({ children, describeError }: PropsWithChildren<
               <Pressable style={{ flex: 1 }} onPress={() => finish(cancelValue)} accessibilityLabel="Dismiss" />
             </Animated.View>
             <Animated.View entering={ZoomIn.springify().damping(16).stiffness(260)} style={styles.dialogWrap}>
-              <Glass variant="pane" strong blur radius={30} contentStyle={styles.dialog}>
+              <Glass variant="pane" strong blur contentStyle={styles.dialog}>
                 <T variant="heading">{dialog.options.title}</T>
                 {dialog.kind === 'confirm' && dialog.options.message && (
                   <T variant="body" tone="dim">

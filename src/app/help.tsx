@@ -57,7 +57,7 @@ export default function Help() {
         <T variant="overline" tone="dim" style={styles.label}>
           Frequently asked
         </T>
-        <Glass variant="pane" radius={26}>
+        <Glass variant="pane">
           {FAQ.map((item, i) => (
             <Fragment key={item.q}>
               <Animated.View layout={LinearTransition.springify().damping(18)}>

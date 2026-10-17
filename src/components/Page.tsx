@@ -12,7 +12,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { motion, space, useTheme } from '@/theme';
+import { motion, space, useTheme, R } from '@/theme';
 import { Button, haptic, IconButton } from './Controls';
 import { Backdrop, BlurTargetContext, Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     height: 56,
     minWidth: 56,
     paddingHorizontal: 16,
-    borderRadius: 28,
+    borderRadius: R,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

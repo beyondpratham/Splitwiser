@@ -38,7 +38,7 @@ export function ListGroup({
           {action}
         </View>
       )}
-      <Glass variant="pane" radius={26}>
+      <Glass variant="pane">
         {items.map((child, i) => (
           <Fragment key={child.key ?? i}>
             {child}

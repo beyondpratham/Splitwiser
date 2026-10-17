@@ -167,7 +167,7 @@ export default function Groups() {
           )}
 
           {filter === 'all' && (
-            <Glass variant="pane" radius={26} style={styles.newGroup} onPress={() => router.push('/new-group')} accessibilityLabel="Start a new group" contentStyle={styles.newGroupInner}>
+            <Glass variant="pane" style={styles.newGroup} onPress={() => router.push('/new-group')} accessibilityLabel="Start a new group" contentStyle={styles.newGroupInner}>
               <Icon name="plus-circle" size={26} color={t.accent} />
               <T variant="bodyStrong" tone="accent">
                 Start a new group

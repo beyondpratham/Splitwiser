@@ -27,7 +27,7 @@ import {
 import { firstName } from '@/lib/balances';
 import { categoryById } from '@/lib/categories';
 import { dayToDate, formatMoney } from '@/lib/money';
-import { font, space, useTheme } from '@/theme';
+import { font, space, useTheme, R } from '@/theme';
 
 const SPLIT_TEXT = { equal: 'Split equally', exact: 'Split by exact amounts', percent: 'Split by percentage', shares: 'Split by shares' };
 
@@ -129,7 +129,7 @@ export default function ExpenseScreen() {
             return (
               <ListItem
                 key={s.profile_id}
-                left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+                left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} avatar={p?.avatar} />}
                 title={line}
                 subtitle={!e.is_payment && net > 0.004 ? `gets back ${formatMoney(net, e.currency)}` : undefined}
               />
@@ -185,7 +185,7 @@ export default function ExpenseScreen() {
           const mine = c.author_id === me?.id;
           return (
             <Animated.View key={c.id} entering={FadeInDown.springify().damping(16)} layout={LinearTransition} style={[styles.comment, mine && { flexDirection: 'row-reverse' }]}>
-              <Avatar name={author?.name ?? '?'} color={author?.avatar_color ?? '#999'} size={32} />
+              <Avatar name={author?.name ?? '?'} color={author?.avatar_color ?? '#999'} avatar={author?.avatar} size={32} />
               <Pressable
                 onLongPress={
                   mine
@@ -197,7 +197,7 @@ export default function ExpenseScreen() {
                 style={{ maxWidth: '80%' }}
               >
                 {mine ? (
-                  <View style={[styles.bubble, { backgroundColor: t.accent, borderTopRightRadius: 6 }]}>
+                  <View style={[styles.bubble, { backgroundColor: t.accent, borderTopRightRadius: 4 }]}>
                     <T variant="caption" style={{ color: t.accentInk, opacity: 0.8 }}>
                       You · {timeAgo(c.created_at)}
                     </T>
@@ -206,7 +206,7 @@ export default function ExpenseScreen() {
                     </T>
                   </View>
                 ) : (
-                  <Glass radius={20} style={{ borderTopLeftRadius: 6 }} contentStyle={styles.bubble}>
+                  <Glass contentStyle={styles.bubble}>
                     <T variant="caption" tone="dim">
                       {firstName(author, me?.id)} · {timeAgo(c.created_at)}
                     </T>
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   strike: { textDecorationLine: 'line-through' },
   comments: { marginHorizontal: space.lg },
   comment: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', marginBottom: space.md },
-  bubble: { borderRadius: 20, paddingHorizontal: space.lg, paddingVertical: space.sm, gap: 2 },
+  bubble: { borderRadius: R, paddingHorizontal: space.lg, paddingVertical: space.sm, gap: 2 },
   composer: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingLeft: space.lg, paddingRight: 6, minHeight: 52 },
   composerInput: { flex: 1, fontSize: 16, fontFamily: font.regular, maxHeight: 140, paddingVertical: 10, outlineStyle: 'none' } as never,
 });

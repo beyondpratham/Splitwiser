@@ -8,7 +8,7 @@ import { Icon } from '@/components/Icon';
 import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
 import { COFFEE_AMOUNT_INR, UPI_ID, UPI_QR, upiLink } from '@/lib/support';
-import { space, useTheme } from '@/theme';
+import { space, useTheme, R } from '@/theme';
 
 /** Buy me a coffee: ₹10 over UPI — scan the QR, or open a UPI app directly on a phone. */
 export default function Coffee() {
@@ -90,6 +90,6 @@ const styles = StyleSheet.create({
   cup: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center' },
   section: { marginHorizontal: space.lg, marginBottom: space.xl },
   card: { alignItems: 'center', gap: space.md, padding: space.xl },
-  qr: { width: 200, height: 200, borderRadius: 24, overflow: 'hidden', padding: 12 },
+  qr: { width: 200, height: 200, borderRadius: R, overflow: 'hidden', padding: 12 },
   qrEmpty: { borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: space.sm },
 });
