@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
 import { Avatar } from '@/components/Avatar';
+import { Button } from '@/components/Controls';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
+import { T } from '@/components/Text';
 import { useGroup, useGroupBalances, useGroupPairDebts, useMe, usePeople } from '@/lib/api';
 import { firstName, groupDebts } from '@/lib/balances';
 import { formatMoney } from '@/lib/money';
@@ -18,7 +19,6 @@ export default function GroupBalances() {
   const pairs = useGroupPairDebts(id).data ?? [];
   const me = useMe().data;
   const { byId } = usePeople();
-
   const debts = g ? groupDebts(balances, pairs, g.simplify_debts) : [];
 
   return (
@@ -36,18 +36,16 @@ export default function GroupBalances() {
                   title={profile_id === me?.id ? `${p?.name ?? 'You'} (you)` : p?.name ?? '…'}
                   subtitle={
                     rows.length === 0 ? (
-                      <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant }}>
-                        settled up
-                      </Text>
+                      'settled up'
                     ) : (
                       <View>
                         {rows.map((b) => {
                           const v = Number(b.balance);
                           return (
-                            <Text key={b.currency} variant="bodyMedium" style={{ color: v > 0 ? t.colors.owed : t.colors.owe }}>
+                            <T key={b.currency} variant="caption" tone={v > 0 ? 'owed' : 'owe'}>
                               {v > 0 ? 'gets back ' : 'owes '}
                               {formatMoney(Math.abs(v), b.currency)}
-                            </Text>
+                            </T>
                           );
                         })}
                       </View>
@@ -64,7 +62,7 @@ export default function GroupBalances() {
             animateIndex={1}
           >
             {debts.length === 0 ? (
-              <ListItem left={<Icon name="check-decagram" size={32} color={t.colors.owed} />} title="Everyone is settled up" />
+              <ListItem left={<Icon name="check-decagram" size={30} color={t.accent} />} title="Everyone is settled up" />
             ) : (
               debts.map((d, i) => {
                 const from = byId.get(d.from);
@@ -73,34 +71,21 @@ export default function GroupBalances() {
                   <ListItem
                     key={i}
                     left={<Avatar name={from?.name ?? '?'} color={from?.avatar_color ?? '#999'} />}
-                    title={
-                      <Text variant="bodyLarge" style={{ color: t.colors.onSurface }}>
-                        <Text style={{ fontWeight: '700' }}>{firstName(from, me?.id)}</Text>
-                        {d.from === me?.id ? ' owe ' : ' owes '}
-                        <Text style={{ fontWeight: '700' }}>{firstName(to, me?.id).replace(/^You$/, 'you')}</Text>
-                      </Text>
-                    }
+                    title={`${firstName(from, me?.id)} ${d.from === me?.id ? 'owe' : 'owes'} ${firstName(to, me?.id).replace(/^You$/, 'you')}`}
                     subtitle={
-                      <Text
-                        variant="titleSmall"
-                        style={{ color: d.to === me?.id ? t.colors.owed : d.from === me?.id ? t.colors.owe : t.colors.onSurfaceVariant }}
-                      >
+                      <T variant="label" numeric tone={d.to === me?.id ? 'owed' : d.from === me?.id ? 'owe' : 'dim'}>
                         {formatMoney(d.amount, d.currency)}
-                      </Text>
+                      </T>
                     }
                     right={
                       <Button
-                        mode="contained-tonal"
-                        compact
+                        title="Settle"
+                        size="sm"
+                        variant="glass"
                         onPress={() =>
-                          router.push({
-                            pathname: '/settle-up',
-                            params: { groupId: g.id, from: d.from, to: d.to, amount: String(d.amount), currency: d.currency },
-                          })
+                          router.push({ pathname: '/settle-up', params: { groupId: g.id, from: d.from, to: d.to, amount: String(d.amount), currency: d.currency } })
                         }
-                      >
-                        Settle
-                      </Button>
+                      />
                     }
                   />
                 );

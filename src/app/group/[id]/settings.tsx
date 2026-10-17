@@ -1,14 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Switch } from 'react-native-paper';
 import { Avatar, EmojiTile } from '@/components/Avatar';
+import { haptic, Switch } from '@/components/Controls';
 import { useFeedback } from '@/components/Feedback';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { CurrencyPicker, EmojiPicker } from '@/components/Pickers';
 import { Sheet } from '@/components/Sheet';
-import { haptic } from '@/components/ui';
+import { Tile } from '@/components/Tile';
 import {
   useAddGroupMember,
   useDeleteGroup,
@@ -49,7 +49,7 @@ export default function GroupSettings() {
       <ListGroup title="Group" animateIndex={0}>
         <ListItem left={<EmojiTile emoji={g.emoji} size={40} />} title="Icon" chevron onPress={() => setSheet('emoji')} />
         <ListItem
-          left={<Icon name="pencil" color={t.colors.onSurfaceVariant} />}
+          left={<Tile icon="pencil-outline" />}
           title="Name"
           detail={g.name}
           chevron
@@ -58,24 +58,16 @@ export default function GroupSettings() {
             if (name && name !== g.name) update.mutateAsync({ id: g.id, name }).catch(fail);
           }}
         />
-        <ListItem
-          left={<Icon name="currency-usd" color={t.colors.onSurfaceVariant} />}
-          title="Default currency"
-          detail={`${currencyByCode(g.default_currency)?.flag ?? ''} ${g.default_currency}`}
-          chevron
-          onPress={() => setSheet('currency')}
-        />
+        <ListItem left={<Tile icon="currency-usd" />} title="Default currency" detail={`${currencyByCode(g.default_currency)?.flag ?? ''} ${g.default_currency}`} chevron onPress={() => setSheet('currency')} />
       </ListGroup>
 
-      <ListGroup
-        footer="Automatically combines debts to reduce the total number of payments between members. Nobody ends up owing more overall."
-        animateIndex={1}
-      >
+      <ListGroup footer="Combines debts so the fewest payments settle everyone. Nobody ends up paying more overall." animateIndex={1}>
         <ListItem
-          left={<Icon name="auto-fix" color={t.colors.primary} />}
+          left={<Tile icon="auto-fix" />}
           title="Simplify group debts"
           right={
             <Switch
+              label="Simplify group debts"
               value={g.simplify_debts}
               onValueChange={(v) => {
                 haptic.tap();
@@ -83,7 +75,6 @@ export default function GroupSettings() {
               }}
             />
           }
-          onPress={() => update.mutateAsync({ id: g.id, simplify_debts: !g.simplify_debts }).catch(fail)}
         />
       </ListGroup>
 
@@ -99,14 +90,14 @@ export default function GroupSettings() {
             />
           );
         })}
-        <ListItem left={<Icon name="account-plus" size={28} color={t.colors.primary} />} title="Add people" tone="primary" onPress={() => setSheet('members')} />
+        <ListItem left={<Icon name="account-plus-outline" size={26} color={t.accentText} />} title="Add people" tone="accent" onPress={() => setSheet('members')} />
       </ListGroup>
 
       <ListGroup footer={owesInGroup ? 'Settle up before leaving this group.' : undefined} animateIndex={3}>
         <ListItem
-          left={<Icon name="exit-run" color={t.colors.error} />}
+          left={<Tile icon="exit-run" danger />}
           title="Leave group"
-          tone="error"
+          tone="danger"
           disabled={owesInGroup}
           onPress={async () => {
             if (await confirm({ title: `Leave ${g.name}?`, message: 'You will no longer see this group’s expenses.', confirmLabel: 'Leave', destructive: true })) {
@@ -119,18 +110,11 @@ export default function GroupSettings() {
         />
         {g.created_by === me.id ? (
           <ListItem
-            left={<Icon name="delete-outline" color={t.colors.error} />}
+            left={<Tile icon="delete-outline" danger />}
             title="Delete group"
-            tone="error"
+            tone="danger"
             onPress={async () => {
-              if (
-                await confirm({
-                  title: `Delete ${g.name}?`,
-                  message: 'This permanently deletes the group and all of its expenses for everyone.',
-                  confirmLabel: 'Delete',
-                  destructive: true,
-                })
-              ) {
+              if (await confirm({ title: `Delete ${g.name}?`, message: 'This permanently deletes the group and all of its expenses for everyone.', confirmLabel: 'Delete', destructive: true })) {
                 del
                   .mutateAsync(g.id)
                   .then(() => router.dismissTo('/groups'))
@@ -141,12 +125,7 @@ export default function GroupSettings() {
         ) : null}
       </ListGroup>
 
-      <CurrencyPicker
-        visible={sheet === 'currency'}
-        value={g.default_currency}
-        onClose={() => setSheet(null)}
-        onSelect={(c) => update.mutateAsync({ id: g.id, default_currency: c }).catch(fail)}
-      />
+      <CurrencyPicker visible={sheet === 'currency'} value={g.default_currency} onClose={() => setSheet(null)} onSelect={(c) => update.mutateAsync({ id: g.id, default_currency: c }).catch(fail)} />
       <EmojiPicker visible={sheet === 'emoji'} value={g.emoji} onClose={() => setSheet(null)} onSelect={(e) => update.mutateAsync({ id: g.id, emoji: e }).catch(fail)} />
       <Sheet visible={sheet === 'members'} title="Add people" onClose={() => setSheet(null)}>
         <ListGroup footer="Only friends can be added. Add new friends by email first.">
@@ -159,7 +138,7 @@ export default function GroupSettings() {
                 left={<Avatar name={f.name} color={f.avatar_color} />}
                 title={f.name}
                 subtitle={f.email ?? undefined}
-                right={<Icon name="plus-circle-outline" color={t.colors.primary} />}
+                right={<Icon name="plus-circle-outline" color={t.accentText} />}
                 onPress={() =>
                   addMember
                     .mutateAsync({ groupId: g.id, profileId: f.id })
@@ -175,9 +154,9 @@ export default function GroupSettings() {
         </ListGroup>
         <ListGroup>
           <ListItem
-            left={<Icon name="account-plus-outline" color={t.colors.primary} />}
+            left={<Icon name="account-plus-outline" color={t.accentText} />}
             title="Add a new friend"
-            tone="primary"
+            tone="accent"
             chevron
             onPress={() => {
               setSheet(null);

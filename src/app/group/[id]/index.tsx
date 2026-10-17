@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { ScrollView, Share, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
-import { EmojiTile } from '@/components/Avatar';
+import { Avatar, EmojiTile } from '@/components/Avatar';
+import { Button } from '@/components/Controls';
 import { ExpenseList } from '@/components/ExpenseList';
+import { useFeedback } from '@/components/Feedback';
 import { Page } from '@/components/Page';
+import { T } from '@/components/Text';
 import { EmptyState, Loading } from '@/components/ui';
 import { useGroup, useGroupBalances, useGroupExpenses, useGroupPairDebts, useMe, usePeople } from '@/lib/api';
 import { firstName, groupDebts } from '@/lib/balances';
@@ -20,13 +22,25 @@ export default function GroupScreen() {
   const pairs = useGroupPairDebts(id);
   const me = useMe().data;
   const { byId } = usePeople();
+  const { toast } = useFeedback();
 
-  if (!group.data) return group.isLoading ? <Loading /> : <EmptyState icon="account-group" title="Group not found" />;
+  if (!group.data) return group.isLoading ? <Loading /> : <EmptyState icon="account-group-outline" title="Group not found" />;
   const g = group.data;
 
   const debts = groupDebts(balances.data ?? [], pairs.data ?? [], g.simplify_debts);
   const mine = debts.filter((d) => d.from === me?.id || d.to === me?.id);
   const others = debts.length - mine.length;
+
+  const share = async () => {
+    const lines = debts.length
+      ? debts.map((d) => `• ${firstName(byId.get(d.from))} owes ${firstName(byId.get(d.to))} ${formatMoney(d.amount, d.currency)}`).join('\n')
+      : 'Everyone is settled up 🎉';
+    try {
+      await Share.share({ message: `${g.emoji} ${g.name} — balances\n${lines}\n\nSent from SplitWiser` });
+    } catch {
+      toast('Sharing isn’t available here.');
+    }
+  };
 
   return (
     <Page
@@ -44,57 +58,61 @@ export default function GroupScreen() {
     >
       <View style={styles.hero}>
         <Animated.View entering={ZoomIn.springify().damping(12)}>
-          <EmojiTile emoji={g.emoji} size={88} />
+          <EmojiTile emoji={g.emoji} size={92} />
         </Animated.View>
-        <Text variant="headlineMedium" style={{ color: t.colors.onSurface, textAlign: 'center', marginTop: space.md }}>
+        <T variant="title" style={{ textAlign: 'center', marginTop: space.md }}>
           {g.name}
-        </Text>
-        <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
-          {g.group_members.map((m) => firstName(byId.get(m.profile_id), me?.id)).join(', ')}
-        </Text>
+        </T>
+        <View style={styles.members}>
+          {g.group_members.slice(0, 6).map((m, i) => {
+            const p = byId.get(m.profile_id);
+            return (
+              <View key={m.profile_id} style={{ marginLeft: i ? -10 : 0, borderRadius: 16, borderWidth: 2, borderColor: t.bg }}>
+                <Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} size={28} />
+              </View>
+            );
+          })}
+          <T variant="caption" tone="dim" style={{ marginLeft: space.sm }}>
+            {g.group_members.length} {g.group_members.length === 1 ? 'person' : 'people'}
+          </T>
+        </View>
       </View>
 
       <Animated.View entering={FadeInDown.delay(80).springify()} style={styles.summary}>
         {mine.length === 0 ? (
-          <Text variant="bodyLarge" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+          <T variant="body" tone="dim" style={{ textAlign: 'center' }}>
             {expenses.data?.length ? 'You are all settled up in this group.' : 'No expenses yet.'}
-          </Text>
+          </T>
         ) : (
           mine.map((d, i) => {
             const owedToMe = d.to === me?.id;
             const other = byId.get(owedToMe ? d.from : d.to);
             return (
-              <Text key={i} variant="bodyLarge" style={{ color: owedToMe ? t.colors.owed : t.colors.owe, textAlign: 'center' }}>
+              <T key={i} variant="subhead" tone={owedToMe ? 'owed' : 'owe'} style={{ textAlign: 'center' }}>
                 {owedToMe ? `${firstName(other)} owes you ` : `You owe ${firstName(other)} `}
-                <Text style={{ fontWeight: '700' }}>{formatMoney(d.amount, d.currency)}</Text>
-              </Text>
+                <T variant="subhead" tone={owedToMe ? 'owed' : 'owe'} numeric style={{ fontFamily: 'Inter_700Bold' }}>
+                  {formatMoney(d.amount, d.currency)}
+                </T>
+              </T>
             );
           })
         )}
         {others > 0 && (
-          <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+          <T variant="caption" tone="dim" style={{ textAlign: 'center' }}>
             + {others} other {others === 1 ? 'balance' : 'balances'} between members
-          </Text>
+          </T>
         )}
       </Animated.View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actions}>
-        <Button mode="contained" icon="cash-fast" onPress={() => router.push({ pathname: '/settle-up', params: { groupId: g.id } })}>
-          Settle up
-        </Button>
-        <Button mode="contained-tonal" icon="scale-balance" onPress={() => router.push({ pathname: '/group/[id]/balances', params: { id: g.id } })}>
-          Balances
-        </Button>
-        <Button mode="contained-tonal" icon="chart-donut" onPress={() => router.push({ pathname: '/insights', params: { groupId: g.id } })}>
-          Totals
-        </Button>
-        <Button mode="contained-tonal" icon="account-plus" onPress={() => router.push({ pathname: '/group/[id]/settings', params: { id: g.id } })}>
-          Add people
-        </Button>
+        <Button title="Settle up" icon="cash-check" size="sm" onPress={() => router.push({ pathname: '/settle-up', params: { groupId: g.id } })} />
+        <Button title="Balances" icon="scale-balance" size="sm" variant="glass" onPress={() => router.push({ pathname: '/group/[id]/balances', params: { id: g.id } })} />
+        <Button title="Totals" icon="chart-donut" size="sm" variant="glass" onPress={() => router.push({ pathname: '/insights', params: { groupId: g.id } })} />
+        <Button title="Share" icon="export-variant" size="sm" variant="glass" onPress={share} />
       </ScrollView>
 
       {expenses.data && expenses.data.length === 0 ? (
-        <EmptyState icon="creation" title="Fresh start" message="Add the first expense and SplitWiser will keep track of who owes what." />
+        <EmptyState icon="receipt-text-outline" title="Fresh start" message="Add the first expense and SplitWiser keeps track of who owes what." />
       ) : (
         <ExpenseList expenses={expenses.data ?? []} people={byId} meId={me?.id} />
       )}
@@ -103,7 +121,8 @@ export default function GroupScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingHorizontal: space.xl, marginBottom: space.lg, gap: 2 },
+  hero: { alignItems: 'center', paddingHorizontal: space.xl, marginBottom: space.lg, gap: 4 },
+  members: { flexDirection: 'row', alignItems: 'center', marginTop: space.sm },
   summary: { alignItems: 'center', gap: 4, paddingHorizontal: space.xl, marginBottom: space.lg },
-  actions: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.xl },
+  actions: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.xl, paddingTop: space.xs },
 });
