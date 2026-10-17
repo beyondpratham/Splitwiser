@@ -1,11 +1,12 @@
 import Constants from 'expo-constants';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Avatar } from '@/components/Avatar';
 import { CoffeeCup } from '@/components/CoffeeCup';
-import { useFeedback } from '@/components/Feedback';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
@@ -15,16 +16,16 @@ import { QrViewer } from '@/components/QrViewer';
 import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
 import { useMe, useMyExpenses } from '@/lib/api';
+import { qrColor } from '@/lib/avatars';
 import { mainCurrency, monthlyShare } from '@/lib/insights';
 import { formatMoney } from '@/lib/money';
-import { APP_LINK, COFFEE_AMOUNT_INR } from '@/lib/support';
+import { COFFEE_AMOUNT_INR } from '@/lib/support';
 import { R, space, useTheme } from '@/theme';
 
 export default function Account() {
   const t = useTheme();
   const me = useMe().data;
   const expenses = useMyExpenses().data ?? [];
-  const { toast } = useFeedback();
   const [qrOpen, setQrOpen] = useState(false);
 
   const currency = mainCurrency(expenses, me?.default_currency ?? 'INR');
@@ -32,14 +33,6 @@ export default function Account() {
   const thisMonth = months.at(-1)?.total ?? 0;
   const lastMonth = months.at(-2)?.total ?? 0;
   const peak = Math.max(...months.map((m) => m.total), 1);
-
-  const shareApp = async () => {
-    try {
-      await Share.share({ message: `I split bills with friends on SplitWiser — free, no ads, no limits. Get it here: ${APP_LINK}` });
-    } catch {
-      toast('Sharing isn’t available here.');
-    }
-  };
 
   return (
     <Page title="Account" variant="large" inTabs>
@@ -67,19 +60,25 @@ export default function Account() {
                       {me.phone}
                     </T>
                   )}
-                  <T variant="caption" tone="accent">
-                    View profile
-                  </T>
                 </View>
               </Pressable>
-              <Glass onPress={() => setQrOpen(true)} accessibilityLabel="Show my QR code" contentStyle={styles.qrThumb}>
+              {/* the QR sits behind frosted glass until tapped */}
+              <Pressable onPress={() => setQrOpen(true)} accessibilityRole="button" accessibilityLabel="Show my QR code" style={({ pressed }) => [styles.qrThumb, pressed && { transform: [{ scale: 0.96 }] }]}>
                 <View style={styles.qrBox}>
-                  <QrCode value={profileQrValue(me)} size={52} />
+                  <QrCode value={profileQrValue(me)} size={50} color={qrColor(me)} />
                 </View>
-                <T variant="caption" tone="dim" style={{ fontSize: 11 }}>
-                  My QR
-                </T>
-              </Glass>
+                {Platform.OS !== 'android' && <BlurView intensity={10} tint={t.blurTint} style={StyleSheet.absoluteFill} />}
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: t.glassTint }]} />
+                <LinearGradient pointerEvents="none" colors={[t.sheen, 'transparent']} locations={[0, 0.45]} style={StyleSheet.absoluteFill} />
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={['transparent', t.sheenDiag, 'transparent']}
+                  start={{ x: 0, y: 0.1 }}
+                  end={{ x: 1, y: 0.9 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.qrRim, { borderTopColor: t.rimTop, borderLeftColor: t.rimSide, borderRightColor: t.rimSide, borderBottomColor: t.rimBottom }]} />
+              </Pressable>
             </Glass>
           </Animated.View>
 
@@ -117,8 +116,7 @@ export default function Account() {
 
           <ListGroup animateIndex={2}>
             <ListItem left={<Tile icon="cog-outline" />} title="Settings" subtitle="Appearance, notifications, privacy, account" chevron onPress={() => router.push('/settings')} />
-            <ListItem left={<Tile icon="lifebuoy" />} title="Help & support" subtitle="FAQ, contact, report a problem" chevron onPress={() => router.push('/help')} />
-            <ListItem left={<Tile icon="share-variant-outline" />} title="Share SplitWiser" subtitle="Invite friends to the app" chevron onPress={shareApp} />
+            <ListItem left={<Tile icon="lifebuoy" />} title="Help & support" subtitle="FAQ, contact, share the app" chevron onPress={() => router.push('/help')} />
           </ListGroup>
 
           <Animated.View entering={FadeInDown.delay(180).springify().damping(18)} style={styles.section}>
@@ -147,9 +145,10 @@ export default function Account() {
 const styles = StyleSheet.create({
   section: { marginHorizontal: space.lg, marginBottom: space.lg },
   profile: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.sm },
-  profileTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.sm, borderRadius: R - 4 },
-  qrThumb: { alignItems: 'center', gap: 4, padding: 8 },
-  qrBox: { padding: 3, borderRadius: R - 6, backgroundColor: '#FFFFFF', overflow: 'hidden' },
+  profileTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.sm, borderRadius: R - 6 },
+  qrThumb: { width: 72, height: 72, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', marginRight: space.xs },
+  qrBox: { padding: 2 },
+  qrRim: { borderRadius: 22, borderWidth: 1 },
   insights: { flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, padding: space.lg },
   insightsLink: { flexDirection: 'row', alignItems: 'center', marginTop: space.sm },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 60 },

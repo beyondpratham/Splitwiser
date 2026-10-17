@@ -75,7 +75,7 @@ export default function AddFriend() {
           <View style={{ flex: 1 }}>
             <T variant="subhead">Scan a QR code</T>
             <T variant="caption" tone="dim">
-              Fastest — ask them to open Account → My QR
+              Fastest — ask them to tap the QR on their Account page
             </T>
           </View>
           <Icon name="chevron-right" size={22} color={t.inkFaint} />
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   heroIcon: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
   section: { marginHorizontal: space.lg, marginBottom: space.lg },
   scan: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
-  scanIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  scanIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.xl, marginBottom: space.lg },
   line: { flex: 1, height: StyleSheet.hairlineWidth },
 });

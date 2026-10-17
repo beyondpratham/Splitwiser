@@ -1,5 +1,6 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, ZoomIn, ZoomOut } from 'react-native-reanimated';
+import { qrColor } from '@/lib/avatars';
 import type { Profile } from '@/lib/types';
 import { R, space, useTheme } from '@/theme';
 import { Avatar } from './Avatar';
@@ -22,7 +23,7 @@ export function QrViewer({ me, visible, onClose }: { me: Profile; visible: boole
                 <Avatar name={me.name} color={me.avatar_color} avatar={me.avatar} size={56} />
                 <T variant="heading">{me.name}</T>
                 <View style={[styles.qr, { borderColor: t.line }]}>
-                  <QrCode value={profileQrValue(me)} size={232} />
+                  <QrCode value={profileQrValue(me)} size={232} color={qrColor(me)} />
                 </View>
                 <T variant="caption" tone="dim" style={{ textAlign: 'center' }}>
                   Friends can scan this in SplitWiser → Add friend to add you instantly.
