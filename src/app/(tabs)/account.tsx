@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Avatar } from '@/components/Avatar';
 import { CoffeeCup } from '@/components/CoffeeCup';
+import { CoffeeSheet } from '@/components/CoffeeSheet';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { ListGroup, ListItem } from '@/components/List';
@@ -25,6 +26,7 @@ export default function Account() {
   const me = useMe().data;
   const expenses = useMyExpenses().data ?? [];
   const [qrOpen, setQrOpen] = useState(false);
+  const [coffeeOpen, setCoffeeOpen] = useState(false);
 
   const currency = mainCurrency(expenses, me?.default_currency ?? 'INR');
   const months = monthlyShare(expenses, me?.id, currency);
@@ -106,7 +108,7 @@ export default function Account() {
           </ListGroup>
 
           <Animated.View entering={FadeInDown.delay(180).springify().damping(18)} style={styles.section}>
-            <Glass variant="pane" onPress={() => router.push('/coffee')} accessibilityLabel="Buy me a coffee" contentStyle={styles.coffee}>
+            <Glass variant="pane" onPress={() => setCoffeeOpen(true)} accessibilityLabel="Buy me a coffee" contentStyle={styles.coffee}>
               <CoffeeCup />
               <View style={{ flex: 1, gap: 2 }}>
                 <T variant="subhead">Buy me a coffee</T>
@@ -122,6 +124,7 @@ export default function Account() {
             SplitWiser {Constants.expoConfig?.version ?? ''}
           </T>
           <QrViewer me={me} visible={qrOpen} onClose={() => setQrOpen(false)} />
+          <CoffeeSheet visible={coffeeOpen} onClose={() => setCoffeeOpen(false)} />
         </>
       )}
     </Page>

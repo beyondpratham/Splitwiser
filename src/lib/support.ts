@@ -1,21 +1,13 @@
-// Personal details for the Account screen. Fill these in when ready — the app shows sensible
-// placeholders until then.
-import type { ImageSourcePropType } from 'react-native';
+// Personal details used on the Account screen (Buy me a coffee, Help & support).
 
-/** Your UPI ID (e.g. "name@okbank"). Enables the "Pay ₹10 with UPI" button on Buy me a coffee. */
-export const UPI_ID = '';
+/** Your UPI ID. Buy me a coffee opens a UPI app with this filled in. */
+export const UPI_ID = 'prathamrd28-2@okicici';
 
 /** Name shown in the UPI app when paying. */
 export const UPI_NAME = 'Pratham';
 
 /** Coffee amount in rupees. */
 export const COFFEE_AMOUNT_INR = 10;
-
-/**
- * Your UPI QR code. Save the image as assets/upi-qr.png and change this to:
- *   export const UPI_QR: ImageSourcePropType | null = require('../../assets/upi-qr.png');
- */
-export const UPI_QR: ImageSourcePropType | null = null;
 
 /** Where "Contact support" emails go. Leave empty to hide the email option. */
 export const SUPPORT_EMAIL = '';
