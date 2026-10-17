@@ -9,7 +9,7 @@
 -- Tables
 -- ─────────────────────────────────────────────────────────────────────────────
 
-create table public.profiles (
+create table if not exists public.profiles (
   id               uuid primary key default gen_random_uuid(),
   user_id          uuid unique references auth.users (id) on delete set null,
   email            text unique,
@@ -19,7 +19,7 @@ create table public.profiles (
   created_at       timestamptz not null default now()
 );
 
-create table public.friendships (
+create table if not exists public.friendships (
   profile_id uuid not null references public.profiles (id) on delete cascade,
   friend_id  uuid not null references public.profiles (id) on delete cascade,
   created_at timestamptz not null default now(),
@@ -27,7 +27,7 @@ create table public.friendships (
   check (profile_id <> friend_id)
 );
 
-create table public.groups (
+create table if not exists public.groups (
   id               uuid primary key default gen_random_uuid(),
   name             text not null check (length(trim(name)) > 0),
   emoji            text not null default '👥',
@@ -38,14 +38,14 @@ create table public.groups (
   created_at       timestamptz not null default now()
 );
 
-create table public.group_members (
+create table if not exists public.group_members (
   group_id   uuid not null references public.groups (id) on delete cascade,
   profile_id uuid not null references public.profiles (id) on delete cascade,
   joined_at  timestamptz not null default now(),
   primary key (group_id, profile_id)
 );
 
-create table public.expenses (
+create table if not exists public.expenses (
   id          uuid primary key default gen_random_uuid(),
   group_id    uuid references public.groups (id) on delete cascade,
   description text not null check (length(trim(description)) > 0),
@@ -61,9 +61,9 @@ create table public.expenses (
   updated_at  timestamptz not null default now(),
   deleted_at  timestamptz
 );
-create index expenses_group_idx on public.expenses (group_id, spent_on desc);
+create index if not exists expenses_group_idx on public.expenses (group_id, spent_on desc);
 
-create table public.expense_shares (
+create table if not exists public.expense_shares (
   expense_id  uuid not null references public.expenses (id) on delete cascade,
   profile_id  uuid not null references public.profiles (id) on delete cascade,
   paid        numeric(14, 2) not null default 0 check (paid >= 0),
@@ -71,18 +71,18 @@ create table public.expense_shares (
   split_value numeric(14, 4), -- raw input for percent / shares splits, for re-editing
   primary key (expense_id, profile_id)
 );
-create index expense_shares_profile_idx on public.expense_shares (profile_id);
+create index if not exists expense_shares_profile_idx on public.expense_shares (profile_id);
 
-create table public.comments (
+create table if not exists public.comments (
   id         uuid primary key default gen_random_uuid(),
   expense_id uuid not null references public.expenses (id) on delete cascade,
   author_id  uuid not null references public.profiles (id) on delete cascade,
   body       text not null check (length(trim(body)) > 0),
   created_at timestamptz not null default now()
 );
-create index comments_expense_idx on public.comments (expense_id, created_at);
+create index if not exists comments_expense_idx on public.comments (expense_id, created_at);
 
-create table public.activity (
+create table if not exists public.activity (
   id         uuid primary key default gen_random_uuid(),
   actor_id   uuid references public.profiles (id) on delete set null,
   kind       text not null, -- expense_added | expense_updated | expense_deleted | payment_added | comment_added | group_created | member_added
@@ -92,8 +92,8 @@ create table public.activity (
   data       jsonb not null default '{}',
   created_at timestamptz not null default now()
 );
-create index activity_involved_idx on public.activity using gin (involved);
-create index activity_expense_idx on public.activity (expense_id, created_at);
+create index if not exists activity_involved_idx on public.activity using gin (involved);
+create index if not exists activity_expense_idx on public.activity (expense_id, created_at);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Helpers (security definer so RLS policies can call them without recursion)
@@ -168,6 +168,7 @@ begin
 end
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
@@ -185,23 +186,37 @@ alter table public.expense_shares enable row level security;
 alter table public.comments       enable row level security;
 alter table public.activity       enable row level security;
 
+drop policy if exists "see related profiles" on public.profiles;
 create policy "see related profiles" on public.profiles for select using (public.can_see_profile(id));
+drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile"   on public.profiles for update using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+drop policy if exists "see own friendships" on public.friendships;
 create policy "see own friendships"    on public.friendships for select using (profile_id = public.me());
+drop policy if exists "remove own friendships" on public.friendships;
 create policy "remove own friendships" on public.friendships for delete using (profile_id = public.me() or friend_id = public.me());
 
+drop policy if exists "members see groups" on public.groups;
 create policy "members see groups"    on public.groups for select using (public.is_group_member(id) or created_by = public.me());
+drop policy if exists "members update groups" on public.groups;
 create policy "members update groups" on public.groups for update using (public.is_group_member(id));
+drop policy if exists "creator deletes group" on public.groups;
 create policy "creator deletes group" on public.groups for delete using (created_by = public.me());
 
+drop policy if exists "members see members" on public.group_members;
 create policy "members see members" on public.group_members for select using (public.is_group_member(group_id));
+drop policy if exists "leave group" on public.group_members;
 create policy "leave group"         on public.group_members for delete using (profile_id = public.me());
 
+drop policy if exists "see expenses" on public.expenses;
 create policy "see expenses"    on public.expenses       for select using (public.can_see_expense(id));
+drop policy if exists "see shares" on public.expense_shares;
 create policy "see shares"      on public.expense_shares for select using (public.can_see_expense(expense_id));
+drop policy if exists "see comments" on public.comments;
 create policy "see comments"    on public.comments       for select using (public.can_see_expense(expense_id));
+drop policy if exists "delete own comment" on public.comments;
 create policy "delete own comment" on public.comments    for delete using (author_id = public.me());
+drop policy if exists "see activity" on public.activity;
 create policy "see activity"    on public.activity       for select using (public.me() = any (involved));
 
 -- Writes for groups / members / expenses / comments go through the RPCs below.
@@ -504,4 +519,10 @@ grant update (name, emoji, kind, default_currency, simplify_debts) on public.gro
 revoke insert on public.profiles, public.friendships, public.groups, public.group_members,
   public.expenses, public.expense_shares, public.comments, public.activity from anon, authenticated;
 
-alter publication supabase_realtime add table public.activity;
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'activity') then
+    alter publication supabase_realtime add table public.activity;
+  end if;
+end
+$$;

@@ -1,7 +1,7 @@
 -- Phone numbers are private: only you can read yours. Others can only use it to find you (sync contacts,
 -- add by phone), and only while you allow that.
 
-alter table public.profiles add column phone_discoverable boolean not null default true;
+alter table public.profiles add column if not exists phone_discoverable boolean not null default true;
 
 -- Every profile column except phone / phone_discoverable stays readable (row level security still decides
 -- which rows). Your own phone comes from my_private_profile().

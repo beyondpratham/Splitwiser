@@ -4,7 +4,7 @@
 
 -- ─── Settings ────────────────────────────────────────────────────────────────
 
-create table public.notification_prefs (
+create table if not exists public.notification_prefs (
   profile_id uuid primary key references public.profiles (id) on delete cascade,
   expenses   text not null default 'push'  check (expenses  in ('off', 'push', 'email', 'both')),
   payments   text not null default 'both'  check (payments  in ('off', 'push', 'email', 'both')),
@@ -15,6 +15,7 @@ create table public.notification_prefs (
   updated_at timestamptz not null default now()
 );
 alter table public.notification_prefs enable row level security;
+drop policy if exists "see own notification prefs" on public.notification_prefs;
 create policy "see own notification prefs" on public.notification_prefs for select using (profile_id = public.me());
 revoke insert, update, delete on public.notification_prefs from anon, authenticated;
 grant select on public.notification_prefs to authenticated;
@@ -53,13 +54,13 @@ $$;
 
 -- ─── Push tokens (one row per device; a token moves with whoever signs in on it) ───
 
-create table public.push_tokens (
+create table if not exists public.push_tokens (
   token      text primary key,
   profile_id uuid not null references public.profiles (id) on delete cascade,
   platform   text not null default 'android',
   updated_at timestamptz not null default now()
 );
-create index push_tokens_profile_idx on public.push_tokens (profile_id);
+create index if not exists push_tokens_profile_idx on public.push_tokens (profile_id);
 alter table public.push_tokens enable row level security;
 revoke all on public.push_tokens from anon, authenticated;
 
@@ -82,7 +83,7 @@ $$;
 
 -- ─── Outbox ──────────────────────────────────────────────────────────────────
 
-create table public.notification_outbox (
+create table if not exists public.notification_outbox (
   id          bigint generated always as identity primary key,
   profile_id  uuid not null references public.profiles (id) on delete cascade,
   category    text not null, -- expenses | payments | comments | friends | reminders | weekly
@@ -94,7 +95,7 @@ create table public.notification_outbox (
   sent_at     timestamptz,
   error       text
 );
-create index notification_outbox_unsent_idx on public.notification_outbox (created_at) where sent_at is null;
+create index if not exists notification_outbox_unsent_idx on public.notification_outbox (created_at) where sent_at is null;
 alter table public.notification_outbox enable row level security; -- no policies: only the edge function reads it
 revoke all on public.notification_outbox from anon, authenticated;
 
@@ -161,6 +162,7 @@ begin
 end
 $$;
 
+drop trigger if exists on_activity_notify on public.activity;
 create trigger on_activity_notify after insert on public.activity
 for each row execute function public.notify_activity();
 

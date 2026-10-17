@@ -44,13 +44,21 @@ revoke execute on function public.expense_snapshot(uuid) from public, anon, auth
 
 -- ─── 3. Sensible size limits (stop huge strings being stored) ───────────────
 -- NOT VALID: checked for every new or edited row, without re-checking what's already stored.
+alter table public.profiles drop constraint if exists profiles_name_length;
 alter table public.profiles add constraint profiles_name_length check (length(name) between 1 and 80) not valid;
+alter table public.groups drop constraint if exists groups_name_length;
+alter table public.groups drop constraint if exists groups_emoji_length;
 alter table public.groups add constraint groups_name_length check (length(name) <= 80) not valid,
                           add constraint groups_emoji_length check (length(emoji) <= 16) not valid;
+alter table public.expenses drop constraint if exists expenses_description_length;
+alter table public.expenses drop constraint if exists expenses_notes_length;
+alter table public.expenses drop constraint if exists expenses_currency_format;
+alter table public.expenses drop constraint if exists expenses_category_length;
 alter table public.expenses add constraint expenses_description_length check (length(description) <= 300) not valid,
                             add constraint expenses_notes_length check (notes is null or length(notes) <= 2000) not valid,
                             add constraint expenses_currency_format check (currency ~ '^[A-Z]{3}$') not valid,
                             add constraint expenses_category_length check (length(category) <= 40) not valid;
+alter table public.comments drop constraint if exists comments_body_length;
 alter table public.comments add constraint comments_body_length check (length(body) <= 2000) not valid;
 
 -- ─── 4. Leaving groups and removing friends go through checked functions ────
@@ -184,7 +192,7 @@ end
 $$;
 
 -- ─── 7. Notifications: give up after a few failed tries; no empty weekly emails ───
-alter table public.notification_outbox add column attempts int not null default 0;
+alter table public.notification_outbox add column if not exists attempts int not null default 0;
 
 create or replace function public.weekly_summaries()
 returns table (profile_id uuid, channels text[], owed jsonb, owe jsonb, new_expenses int)

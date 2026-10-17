@@ -2,11 +2,13 @@
 -- per user, and contact matching for "sync contacts".
 
 alter table public.profiles
-  add column phone text,
-  add column avatar text;
+  add column if not exists phone text,
+  add column if not exists avatar text;
 
 -- One phone number per account (emails are already unique).
-create unique index profiles_phone_key on public.profiles (phone) where phone is not null;
+create unique index if not exists profiles_phone_key on public.profiles (phone) where phone is not null;
+alter table public.profiles drop constraint if exists profiles_phone_format;
+alter table public.profiles drop constraint if exists profiles_avatar_size;
 alter table public.profiles
   add constraint profiles_phone_format check (phone is null or phone ~ '^\+[1-9][0-9]{6,14}$'),
   -- "emoji:<key>" for preset avatars, or a small data: URI photo (resized on the device)
@@ -16,12 +18,13 @@ revoke update on public.profiles from anon, authenticated;
 grant update (name, avatar_color, default_currency, phone, avatar) on public.profiles to authenticated;
 
 -- One device per user: the device that signed in most recently wins; the others sign out.
-create table public.active_devices (
+create table if not exists public.active_devices (
   profile_id uuid primary key references public.profiles (id) on delete cascade,
   device_id  text not null,
   claimed_at timestamptz not null default now()
 );
 alter table public.active_devices enable row level security;
+drop policy if exists "see own device" on public.active_devices;
 create policy "see own device" on public.active_devices for select using (profile_id = public.me());
 revoke insert, update, delete on public.active_devices from anon, authenticated;
 
