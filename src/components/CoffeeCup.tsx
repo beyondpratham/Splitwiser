@@ -4,9 +4,9 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTheme } from '@/theme';
 
-const animation = require('../../assets/animations/coffee-cup.json');
+const animation = require('../../assets/animations/hot-coffee.json');
 
-/** A colourful animated coffee cup that plays once each time the screen comes into focus. */
+/** A steaming cup of coffee; the animation restarts each time the screen comes into focus. */
 export function CoffeeCup({ size = 56 }: { size?: number }) {
   const t = useTheme();
   // remounting restarts the animation; this works the same on native and web
@@ -20,7 +20,7 @@ export function CoffeeCup({ size = 56 }: { size?: number }) {
 
   return (
     <View style={[styles.wrap, { width: size, height: size, borderRadius: size / 2, backgroundColor: t.accentSoft }]}>
-      <LottieView key={run} source={animation} autoPlay loop={false} style={{ width: size * 0.9, height: size * 0.9 }} webStyle={{ width: size * 0.9, height: size * 0.9 }} />
+      <LottieView key={run} source={animation} autoPlay loop style={{ width: size * 1.2, height: size * 1.2 }} webStyle={{ width: size * 1.2, height: size * 1.2 }} />
     </View>
   );
 }
