@@ -35,6 +35,7 @@ export default function Groups() {
   const nonGroup = entries(summary.byGroup.get('none'));
   const [filter, setFilter] = useState<Filter>('all');
   const [showSettled, setShowSettled] = useState(false);
+  const [query, setQuery] = useState('');
 
   // per group: who owes me / whom I owe, biggest first
   const lines = useMemo(() => {
@@ -47,10 +48,11 @@ export default function Groups() {
     return map;
   }, [balances.data]);
 
-  const all = groups.data ?? [];
+  const q = query.trim().toLowerCase();
+  const all = (groups.data ?? []).filter((g) => !q || g.name.toLowerCase().includes(q));
   const net = (id: string) => entries(summary.byGroup.get(id))[0]?.[1] ?? 0;
   const open = all.filter((g) => net(g.id) !== 0 && (filter === 'all' || filter === 'outstanding' || (filter === 'owe' ? net(g.id) < 0 : net(g.id) > 0)));
-  const settled = filter === 'all' ? all.filter((g) => net(g.id) === 0) : [];
+  const settled = filter === 'all' || q ? all.filter((g) => net(g.id) === 0) : [];
 
   const row = (g: (typeof all)[number]) => {
     const bal = entries(summary.byGroup.get(g.id));
@@ -97,10 +99,8 @@ export default function Groups() {
       title="Groups"
       variant="large"
       inTabs
-      actions={[
-        { icon: 'chart-donut', label: 'Spending insights', onPress: () => router.push('/insights') },
-        { icon: 'account-multiple-plus-outline', label: 'New group', onPress: () => router.push('/new-group') },
-      ]}
+      actions={[{ icon: 'account-multiple-plus-outline', label: 'New group', onPress: () => router.push('/new-group') }]}
+      search={{ value: query, onChange: setQuery, placeholder: 'Search groups', label: 'Search groups' }}
       fab={{ label: 'Add expense', icon: 'plus', onPress: () => router.push('/add-expense') }}
       refreshing={groups.isRefetching || balances.isRefetching}
       onRefresh={() => {
@@ -108,9 +108,9 @@ export default function Groups() {
         balances.refetch();
       }}
     >
-      <BalanceSummary {...summary} />
+      {!q && <BalanceSummary {...summary} />}
 
-      {groups.data && all.length === 0 ? (
+      {groups.data && groups.data.length === 0 ? (
         <EmptyState
           icon="account-group-outline"
           title="No groups yet"
@@ -135,7 +135,13 @@ export default function Groups() {
             )
           )}
 
-          {nonGroup.length > 0 && (filter === 'all' || filter === 'outstanding' || (filter === 'owe' ? nonGroup[0][1] < 0 : nonGroup[0][1] > 0)) && (
+          {q && all.length === 0 && (
+            <T variant="body" tone="dim" style={styles.none}>
+              No groups match “{query}”.
+            </T>
+          )}
+
+          {!q && nonGroup.length > 0 && (filter === 'all' || filter === 'outstanding' || (filter === 'owe' ? nonGroup[0][1] < 0 : nonGroup[0][1] > 0)) && (
             <ListGroup animateIndex={2}>
               <ListItem
                 left={<EmojiTile emoji="🤝" />}
@@ -158,7 +164,7 @@ export default function Groups() {
                   onPress={() => setShowSettled(!showSettled)}
                 />
               </View>
-              {showSettled && (
+              {(showSettled || !!q) && (
                 <Animated.View entering={FadeIn.duration(220)}>
                   <ListGroup title="Settled up">{settled.map(row)}</ListGroup>
                 </Animated.View>
@@ -166,7 +172,7 @@ export default function Groups() {
             </>
           )}
 
-          {filter === 'all' && (
+          {filter === 'all' && !q && (
             <Glass variant="pane" style={styles.newGroup} onPress={() => router.push('/new-group')} accessibilityLabel="Start a new group" contentStyle={styles.newGroupInner}>
               <Icon name="plus-circle" size={26} color={t.accent} />
               <T variant="bodyStrong" tone="accent">
