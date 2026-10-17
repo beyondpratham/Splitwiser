@@ -10,7 +10,7 @@ import { ListGroup, ListItem } from '@/components/List';
 import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
-import { APP_LINK, ISSUES_URL, REPO_URL, SUPPORT_EMAIL } from '@/lib/support';
+import { APP_LINK, ISSUES_URL, PRIVACY_URL, REPO_URL, SUPPORT_EMAIL } from '@/lib/support';
 import { space, useTheme } from '@/theme';
 
 const FAQ = [
@@ -111,6 +111,7 @@ export default function Help() {
         ) : null}
         <ListItem left={<Tile icon="bug-outline" />} title="Report a problem" subtitle="Opens an issue on GitHub" chevron onPress={() => Linking.openURL(ISSUES_URL)} />
         <ListItem left={<Tile icon="github" />} title="Source code" subtitle="SplitWiser is open source" chevron onPress={() => Linking.openURL(REPO_URL)} />
+        <ListItem left={<Tile icon="shield-lock-outline" />} title="Privacy policy" subtitle="What we collect, and what we never do" chevron onPress={() => Linking.openURL(PRIVACY_URL)} />
       </ListGroup>
 
       <ListGroup title="Spread the word">

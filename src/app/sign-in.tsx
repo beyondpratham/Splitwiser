@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, ZoomIn } from 'react-native-reanimated';
 import { Button, Field, haptic, IconButton, Segmented } from '@/components/Controls';
 import { Glass } from '@/components/Glass';
@@ -9,6 +9,7 @@ import { Page } from '@/components/Page';
 import { T } from '@/components/Text';
 import { claimThisDevice } from '@/lib/device';
 import { friendlyError, supabase } from '@/lib/supabase';
+import { PRIVACY_URL } from '@/lib/support';
 import { space } from '@/theme';
 
 export default function SignIn() {
@@ -105,6 +106,15 @@ export default function SignIn() {
               hint={notice ?? undefined}
             />
             <Button title={mode === 'in' ? 'Sign in' : 'Create account'} size="lg" onPress={submit} loading={busy} disabled={!valid || busy} style={{ marginTop: space.sm }} />
+            {mode === 'up' && (
+              <T variant="caption" tone="dim" style={{ textAlign: 'center' }}>
+                By creating an account you agree to the{' '}
+                <T variant="caption" tone="accent" onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
+                  privacy policy
+                </T>
+                .
+              </T>
+            )}
             {mode === 'in' && (
               <Button title="Forgot password?" variant="ghost" onPress={() => router.push({ pathname: '/reset-password', params: { email: email.trim() } })} />
             )}

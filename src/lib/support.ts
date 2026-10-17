@@ -15,6 +15,11 @@ export const SUPPORT_EMAIL = '';
 export const REPO_URL = 'https://github.com/beyondpratham/Splitwiser';
 export const ISSUES_URL = `${REPO_URL}/issues`;
 
+/** Public pages (GitHub Pages, from the docs/ folder). */
+export const SITE_URL = 'https://beyondpratham.github.io/Splitwiser';
+export const PRIVACY_URL = `${SITE_URL}/privacy.html`;
+export const DELETE_ACCOUNT_URL = `${SITE_URL}/delete-account.html`;
+
 export function upiLink(amount = COFFEE_AMOUNT_INR) {
   if (!UPI_ID) return null;
   const params = new URLSearchParams({ pa: UPI_ID, pn: UPI_NAME, am: String(amount), cu: 'INR', tn: 'Coffee for SplitWiser' });
