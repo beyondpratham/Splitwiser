@@ -1,10 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text } from 'react-native-paper';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { CategoryTile } from '@/components/Avatar';
+import { Segmented } from '@/components/Controls';
+import { Glass } from '@/components/Glass';
 import { Page } from '@/components/Page';
+import { T } from '@/components/Text';
 import { AnimatedMoney, EmptyState, haptic } from '@/components/ui';
 import { useGroup, useGroupExpenses, useMe, useMyExpenses } from '@/lib/api';
 import { categoryById } from '@/lib/categories';
@@ -77,90 +79,95 @@ export default function Insights() {
         <>
           <View style={styles.controls}>
             {groupId && (
-              <SegmentedButtons
+              <Segmented<Measure>
                 value={measure}
-                onValueChange={(v) => setMeasure(v as Measure)}
-                buttons={[
-                  { value: 'mine', label: 'My share', icon: 'account' },
-                  { value: 'total', label: 'Group spending', icon: 'account-group' },
+                onChange={setMeasure}
+                options={[
+                  { value: 'mine', label: 'My share', icon: 'account-outline' },
+                  { value: 'total', label: 'Group spending', icon: 'account-group-outline' },
                 ]}
               />
             )}
-            {currencies.length > 1 && (
-              <SegmentedButtons value={currency} onValueChange={setCurrency} buttons={currencies.slice(0, 4).map((c) => ({ value: c, label: c }))} />
-            )}
+            {currencies.length > 1 && <Segmented value={currency} onChange={setCurrency} options={currencies.slice(0, 4).map((c) => ({ value: c, label: c }))} />}
           </View>
 
-          <Animated.View entering={FadeInDown.springify().damping(18)} style={[styles.card, { backgroundColor: t.colors.primaryContainer }]}>
-            <Text variant="labelLarge" style={{ color: t.colors.onPrimaryContainer, opacity: 0.8 }}>
-              {measure === 'mine' ? 'Your share' : 'Group spending'} · all time
-            </Text>
-            <AnimatedMoney amount={data.total} currency={currency} style={[styles.hero, { color: t.colors.onPrimaryContainer }]} />
-            <Text variant="bodyMedium" style={{ color: t.colors.onPrimaryContainer }}>
-              {formatMoney(thisMonth, currency)} this month
-              {change != null && (
-                <Text style={{ fontWeight: '700' }}>
-                  {'  '}
-                  {change > 0 ? '▲' : change < 0 ? '▼' : ''} {Math.abs(change)}% vs last month
-                </Text>
-              )}
-            </Text>
+          <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.section}>
+            <Glass variant="pane" tint={t.accentSoft} contentStyle={styles.card}>
+              <T variant="label" tone="dim">
+                {measure === 'mine' ? 'Your share' : 'Group spending'} · all time
+              </T>
+              <AnimatedMoney amount={data.total} currency={currency} style={{ fontSize: 40, lineHeight: 48, color: t.accentText }} />
+              <T variant="caption" tone="dim">
+                {formatMoney(thisMonth, currency)} this month
+                {change != null && (
+                  <T variant="caption" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                    {'  '}
+                    {change > 0 ? '▲' : change < 0 ? '▼' : ''} {Math.abs(change)}% vs last month
+                  </T>
+                )}
+              </T>
+            </Glass>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={[styles.card, { backgroundColor: t.colors.surfaceContainerLow }]}>
-            <View style={styles.cardHeader}>
-              <Text variant="titleMedium" style={{ color: t.colors.onSurface }}>
-                Last 6 months
-              </Text>
-              {shown && (
-                <Text variant="bodyMedium" style={{ color: t.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}>
-                  {new Date(`${shown}-15`).toLocaleDateString(undefined, { month: 'short' })} ·{' '}
-                  <Text style={{ color: t.colors.onSurface, fontWeight: '700' }}>{formatMoney(data.months.find(([m]) => m === shown)?.[1] ?? 0, currency)}</Text>
-                </Text>
-              )}
-            </View>
-            <View style={styles.chart}>
-              {data.months.map(([m, v], i) => (
-                <MonthBar
-                  key={m}
-                  label={new Date(`${m}-15`).toLocaleDateString(undefined, { month: 'narrow' })}
-                  height={v > 0 ? Math.max((v / maxMonth) * CHART_HEIGHT, 4) : 0}
-                  active={m === shown}
-                  delay={i * 50}
-                  accessibilityLabel={`${m}: ${formatMoney(v, currency)}`}
-                  onPress={() => {
-                    haptic.tap();
-                    setSelectedMonth(m);
-                  }}
-                />
-              ))}
-            </View>
+          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={styles.section}>
+            <Glass variant="pane" contentStyle={styles.card}>
+              <View style={styles.cardHeader}>
+                <T variant="subhead">Last 6 months</T>
+                {shown && (
+                  <T variant="caption" tone="dim" numeric>
+                    {new Date(`${shown}-15`).toLocaleDateString(undefined, { month: 'short' })} ·{' '}
+                    <T variant="caption" numeric style={{ fontFamily: 'Inter_700Bold' }}>
+                      {formatMoney(data.months.find(([m]) => m === shown)?.[1] ?? 0, currency)}
+                    </T>
+                  </T>
+                )}
+              </View>
+              <View style={styles.chart}>
+                {data.months.map(([m, v], i) => (
+                  <MonthBar
+                    key={m}
+                    label={new Date(`${m}-15`).toLocaleDateString(undefined, { month: 'narrow' })}
+                    height={v > 0 ? Math.max((v / maxMonth) * CHART_HEIGHT, 4) : 0}
+                    active={m === shown}
+                    delay={i * 50}
+                    accessibilityLabel={`${m}: ${formatMoney(v, currency)}`}
+                    onPress={() => {
+                      haptic.tap();
+                      setSelectedMonth(m);
+                    }}
+                  />
+                ))}
+              </View>
+            </Glass>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={[styles.card, { backgroundColor: t.colors.surfaceContainerLow }]}>
-            <Text variant="titleMedium" style={{ color: t.colors.onSurface, marginBottom: space.md }}>
-              By category
-            </Text>
-            {data.categories.map(([id, v], i) => {
-              const pct = data.total > 0 ? Math.round((v / data.total) * 100) : 0;
-              return (
-                <View key={id} style={styles.catRow}>
-                  <CategoryTile category={id} size={36} />
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <View style={styles.catText}>
-                      <Text variant="bodyLarge" style={{ color: t.colors.onSurface }}>
-                        {categoryById(id).label}
-                      </Text>
-                      <Text variant="bodyLarge" style={{ color: t.colors.onSurface, fontVariant: ['tabular-nums'] }}>
-                        {formatMoney(v, currency)}
-                        <Text style={{ color: t.colors.onSurfaceVariant }}> {pct}%</Text>
-                      </Text>
+          <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={styles.section}>
+            <Glass variant="pane" contentStyle={styles.card}>
+              <T variant="subhead" style={{ marginBottom: space.sm }}>
+                By category
+              </T>
+              {data.categories.map(([id, v], i) => {
+                const pct = data.total > 0 ? Math.round((v / data.total) * 100) : 0;
+                return (
+                  <View key={id} style={styles.catRow}>
+                    <CategoryTile category={id} size={36} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <View style={styles.catText}>
+                        <T variant="label">{categoryById(id).label}</T>
+                        <T variant="label" numeric>
+                          {formatMoney(v, currency)}
+                          <T variant="caption" tone="dim">
+                            {' '}
+                            {pct}%
+                          </T>
+                        </T>
+                      </View>
+                      <CategoryBar fraction={v / maxCat} delay={i * 60} />
                     </View>
-                    <CategoryBar fraction={v / maxCat} delay={i * 60} />
                   </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </Glass>
           </Animated.View>
         </>
       )}
@@ -187,7 +194,7 @@ function MonthBar({
   const h = useSharedValue(0);
   const on = useSharedValue(active ? 1 : 0);
   useEffect(() => {
-    h.set(withDelay(delay, withSpring(height, motion.standard)));
+    h.set(withDelay(delay, withSpring(height, motion.smooth)));
   }, [height, delay, h]);
   useEffect(() => {
     on.set(withTiming(active ? 1 : 0, { duration: 200 }));
@@ -196,11 +203,11 @@ function MonthBar({
   return (
     <Pressable style={styles.barCol} onPress={onPress} accessibilityLabel={accessibilityLabel}>
       <View style={styles.barTrack}>
-        <Animated.View style={[styles.bar, { backgroundColor: t.colors.primary }, style]} />
+        <Animated.View style={[styles.bar, { backgroundColor: t.accent }, style]} />
       </View>
-      <Text variant="labelMedium" style={{ marginTop: 6, color: active ? t.colors.onSurface : t.colors.onSurfaceVariant, fontWeight: active ? '700' : '400' }}>
+      <T variant="caption" style={{ marginTop: 6, color: active ? t.ink : t.inkDim, fontFamily: active ? 'Inter_700Bold' : 'Inter_400Regular' }}>
         {label}
-      </Text>
+      </T>
     </Pressable>
   );
 }
@@ -209,20 +216,20 @@ function CategoryBar({ fraction, delay }: { fraction: number; delay: number }) {
   const t = useTheme();
   const w = useSharedValue(0);
   useEffect(() => {
-    w.set(withDelay(delay, withSpring(fraction, motion.standard)));
+    w.set(withDelay(delay, withSpring(fraction, motion.smooth)));
   }, [fraction, delay, w]);
   const style = useAnimatedStyle(() => ({ transform: [{ scaleX: w.get() }] }));
   return (
-    <View style={[styles.hTrack, { backgroundColor: t.colors.surfaceContainerHighest }]}>
-      <Animated.View style={[styles.hBar, { backgroundColor: t.colors.primary }, style]} />
+    <View style={[styles.hTrack, { backgroundColor: (t.dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)') }]}>
+      <Animated.View style={[styles.hBar, { backgroundColor: t.accent }, style]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   controls: { paddingHorizontal: space.lg, gap: space.sm, marginBottom: space.lg },
-  card: { marginHorizontal: space.lg, marginBottom: space.lg, borderRadius: 28, padding: space.xl },
-  hero: { fontSize: 44, lineHeight: 52, fontWeight: '600', letterSpacing: -0.5, marginVertical: 2 },
+  section: { marginHorizontal: space.lg, marginBottom: space.lg },
+  card: { padding: space.xl },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space.lg },
   chart: { flexDirection: 'row', height: CHART_HEIGHT + 24, gap: 2 },
   barCol: { flex: 1, alignItems: 'center' },

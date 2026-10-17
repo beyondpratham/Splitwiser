@@ -1,13 +1,12 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { BackendForm } from '@/components/BackendForm';
 import { Page } from '@/components/Page';
-import { space, useTheme } from '@/theme';
+import { T } from '@/components/Text';
+import { space } from '@/theme';
 
 export default function Setup() {
-  const t = useTheme();
   return (
     <Page title="Connect" variant="hero" form>
       <View style={styles.hero}>
@@ -15,12 +14,10 @@ export default function Setup() {
           <Image source={require('../../assets/icon.png')} style={styles.logo} />
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(120).springify()} style={{ alignItems: 'center', gap: space.sm }}>
-          <Text variant="headlineMedium" style={{ color: t.colors.onSurface }}>
-            Connect your backend
-          </Text>
-          <Text variant="bodyLarge" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+          <T variant="title">Connect your server</T>
+          <T variant="body" tone="dim" style={{ textAlign: 'center' }}>
             SplitWiser keeps your groups and expenses in your own free Supabase project.
-          </Text>
+          </T>
         </Animated.View>
       </View>
       <Animated.View entering={FadeInDown.delay(220).springify()}>

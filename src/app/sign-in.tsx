@@ -1,15 +1,15 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, ZoomIn } from 'react-native-reanimated';
+import { Button, Field, haptic, IconButton, Segmented } from '@/components/Controls';
+import { Glass } from '@/components/Glass';
 import { Page } from '@/components/Page';
-import { haptic } from '@/components/ui';
+import { T } from '@/components/Text';
 import { friendlyError, supabase } from '@/lib/supabase';
-import { space, useTheme } from '@/theme';
+import { space } from '@/theme';
 
 export default function SignIn() {
-  const t = useTheme();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -50,81 +50,67 @@ export default function SignIn() {
           <Image source={require('../../assets/icon.png')} style={styles.logo} />
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(100).springify()} style={{ alignItems: 'center', gap: space.xs }}>
-          <Text variant="displaySmall" style={{ color: t.colors.onSurface, fontWeight: '600' }}>
-            SplitWiser
-          </Text>
-          <Text variant="bodyLarge" style={{ color: t.colors.onSurfaceVariant, textAlign: 'center' }}>
+          <T variant="display">SplitWiser</T>
+          <T variant="body" tone="dim" style={{ textAlign: 'center' }}>
             Split bills with friends. No ads, no limits.
-          </Text>
+          </T>
         </Animated.View>
       </View>
 
-      <Animated.View entering={FadeInDown.delay(200).springify()} layout={LinearTransition.springify()} style={styles.form}>
-        <SegmentedButtons
-          value={mode}
-          onValueChange={(v) => {
-            setMode(v as 'in' | 'up');
-            setError(null);
-          }}
-          buttons={[
-            { value: 'in', label: 'Sign in', icon: 'login' },
-            { value: 'up', label: 'Create account', icon: 'account-plus' },
-          ]}
-        />
-        {mode === 'up' && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-            <TextInput mode="outlined" label="Your name" value={name} onChangeText={setName} autoComplete="name" left={<TextInput.Icon icon="account" />} />
-          </Animated.View>
-        )}
-        <Animated.View layout={LinearTransition.springify()} style={{ gap: space.md }}>
-          <TextInput
-            mode="outlined"
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            autoComplete="email"
-            left={<TextInput.Icon icon="email-outline" />}
-          />
-          <TextInput
-            mode="outlined"
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
-            onSubmitEditing={() => valid && submit()}
-            left={<TextInput.Icon icon="lock-outline" />}
-            right={<TextInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword(!showPassword)} />}
+      <Animated.View entering={FadeInDown.delay(200).springify()} layout={LinearTransition.springify()} style={styles.section}>
+        <Glass variant="pane" contentStyle={styles.card}>
+          <Segmented
+            value={mode}
+            onChange={(v) => {
+              setMode(v);
+              setError(null);
+            }}
+            options={[
+              { value: 'in', label: 'Sign in' },
+              { value: 'up', label: 'Create account' },
+            ]}
           />
           {mode === 'up' && (
-            <HelperText type="info" visible style={{ marginTop: -space.sm }}>
-              At least 6 characters
-            </HelperText>
+            <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <Field label="Your name" placeholder="Full name" value={name} onChangeText={setName} autoComplete="name" icon="account-outline" />
+            </Animated.View>
           )}
-          {error && (
-            <HelperText type="error" visible>
-              {error}
-            </HelperText>
-          )}
-          {notice && (
-            <HelperText type="info" visible style={{ color: t.colors.primary }}>
-              {notice}
-            </HelperText>
-          )}
-          <Button mode="contained" onPress={submit} loading={busy} disabled={!valid || busy} contentStyle={{ height: 52 }} style={{ marginTop: space.sm }}>
-            {mode === 'in' ? 'Sign in' : 'Create account'}
-          </Button>
-        </Animated.View>
+          <Animated.View layout={LinearTransition.springify()} style={{ gap: space.md }}>
+            <Field
+              label="Email"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              autoComplete="email"
+              icon="email-outline"
+            />
+            <Field
+              label="Password"
+              placeholder={mode === 'up' ? 'At least 6 characters' : 'Your password'}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
+              onSubmitEditing={() => valid && submit()}
+              icon="lock-outline"
+              right={<IconButton plain icon={showPassword ? 'eye-off-outline' : 'eye-outline'} label={showPassword ? 'Hide password' : 'Show password'} onPress={() => setShowPassword(!showPassword)} size={32} />}
+              error={error}
+              hint={notice ?? undefined}
+            />
+            <Button title={mode === 'in' ? 'Sign in' : 'Create account'} size="lg" onPress={submit} loading={busy} disabled={!valid || busy} style={{ marginTop: space.sm }} />
+          </Animated.View>
+        </Glass>
       </Animated.View>
     </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', gap: space.lg, paddingHorizontal: space.xl, marginTop: space.xl, marginBottom: 36 },
-  logo: { width: 104, height: 104, borderRadius: 30 },
-  form: { paddingHorizontal: space.xl, gap: space.md },
+  hero: { alignItems: 'center', gap: space.lg, paddingHorizontal: space.xl, marginTop: space.lg, marginBottom: space.xxl },
+  logo: { width: 100, height: 100, borderRadius: 28 },
+  section: { marginHorizontal: space.lg },
+  card: { padding: space.lg, gap: space.lg },
 });
