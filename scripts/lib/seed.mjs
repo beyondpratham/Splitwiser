@@ -36,6 +36,10 @@ export async function seedDemoData(db, { hashPassword }) {
     ($1::uuid, '#10A66B'), ($2::uuid, '#1E88E5'), ($3::uuid, '#D81B60'), ($4::uuid, '#F4511E')) as c(id, color) where profiles.id = c.id`,
   [alex.pid, sam.pid, priya.pid, jordan.pid]);
   await db.query(`update public.profiles set default_currency = 'USD'`);
+  await db.query(`update public.profiles set avatar = c.avatar from (values
+    ($1::uuid, 'emoji:fox'), ($2::uuid, 'emoji:panda'), ($3::uuid, 'emoji:owl'), ($4::uuid, 'emoji:lion')) as c(id, avatar) where profiles.id = c.id`,
+  [alex.pid, sam.pid, priya.pid, jordan.pid]);
+  await db.query(`update public.profiles set phone = '+919876500001' where id = $1`, [alex.pid]);
 
   for (const p of [sam, priya, jordan]) await rpc(alex.uid, 'add_friend', { friend_email: (await db.query('select email from public.profiles where id = $1', [p.pid])).rows[0].email });
   const chris = await rpc(alex.uid, 'add_friend', { friend_email: 'chris@demo.app', friend_name: 'Chris Park' });

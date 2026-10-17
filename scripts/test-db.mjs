@@ -88,6 +88,19 @@ assert.equal((await as(carol, 'select * from public.my_balances where other_id =
 await as(alice, `select public.restore_expense($1)`, [e1]);
 assert.equal((await as(carol, 'select * from public.my_balances where other_id = $1', [aliceP])).length, 1);
 
+// Phone numbers are unique, avatars and devices are per user
+await as(alice, `update public.profiles set phone = '+919876543210', avatar = 'emoji:fox' where id = $1`, [aliceP]);
+await rejects(as(bob, `update public.profiles set phone = '+919876543210' where id = $1`, [bobP]), /duplicate key|unique/);
+await rejects(as(bob, `update public.profiles set phone = '12345' where id = $1`, [bobP]), /profiles_phone_format/);
+await as(alice, `select public.claim_device('device-aaaaaaaa')`);
+await as(alice, `select public.claim_device('device-bbbbbbbb')`);
+assert.equal((await as(alice, 'select device_id from public.active_devices'))[0].device_id, 'device-bbbbbbbb', 'latest device wins');
+assert.equal((await as(bob, 'select * from public.active_devices')).length, 0, 'devices are private');
+const found = await as(bob, 'select * from public.find_users_by_contacts($1, $2)', [['nobody@x.com', 'ALICE@example.com'], ['+919876543210']]);
+assert.deepEqual(found.map((r) => r.id), [aliceP], 'contacts match by email or phone, only real accounts');
+assert.equal((await as(bob, 'select public.add_friend_by_phone($1) as id', ['+919876543210']))[0].id, aliceP);
+await rejects(as(bob, 'select public.add_friend_by_phone($1)', ['+15550000000']), /nobody on SplitWiser/);
+
 // Removing a friend: blocked while you share a group or owe each other, allowed once neither applies
 await rejects(as(alice, 'select public.remove_friend($1)', [bobP]), /share a group|settle up/);
 const zoe = await signUp('zoe@example.com', 'Zoe');
