@@ -112,6 +112,49 @@ await as(zoe, `select public.save_expense($1)`, [{ description: 'Payment', amoun
 await as(alice, 'select public.remove_friend($1)', [zoeP]);
 assert.equal((await as(alice, 'select * from public.friendships where friend_id = $1', [zoeP])).length, 0, 'friendship removed');
 
+// Notifications: queued per person and type, by the channels each person picked
+const nina = await signUp('nina@example.com', 'Nina');
+const omar = await signUp('omar@example.com', 'Omar');
+const [{ id: ninaP }] = await as(nina, 'select public.me() as id');
+const [{ id: omarP }] = await as(omar, 'select public.me() as id');
+const outbox = async (pid, category) =>
+  (await db.query('select channels, actor_id, data from public.notification_outbox where profile_id = $1 and category = $2 order by id', [pid, category])).rows;
+assert.equal((await as(omar, `select public.my_notification_prefs() ->> 'expenses' as v`))[0].v, 'push', 'default channel');
+await as(nina, `select public.add_friend('omar@example.com')`);
+assert.deepEqual((await outbox(omarP, 'friends')).map((r) => r.channels), [['push']], 'friend request notifies');
+await as(nina, `select public.add_friend('omar@example.com')`);
+assert.equal((await outbox(omarP, 'friends')).length, 1, 'adding again does not notify twice');
+await as(omar, `select public.set_notification_pref('expenses', 'off')`);
+await as(omar, `select public.set_notification_pref('comments', 'email')`);
+await rejects(as(omar, `select public.set_notification_pref('expenses', 'sms')`), /unknown notification channel/);
+await rejects(as(omar, `select public.set_notification_pref('passwords', 'push')`), /unknown notification type/);
+const [{ save_expense: lunch }] = await as(nina, 'select public.save_expense($1)', [
+  { description: 'Lunch', amount: 20, currency: 'USD', shares: [{ profile_id: ninaP, paid: 20, owed: 10 }, { profile_id: omarP, paid: 0, owed: 10 }] },
+]);
+assert.equal((await outbox(omarP, 'expenses')).length, 0, 'switched-off type is not queued');
+assert.equal((await outbox(ninaP, 'expenses')).length, 0, 'nobody is notified about their own action');
+await as(omar, `select public.add_comment($1, 'thanks!')`, [lunch]);
+assert.deepEqual((await outbox(ninaP, 'comments')).map((r) => r.channels), [['push']], 'comment notifies the others');
+await as(nina, `select public.add_comment($1, 'np')`, [lunch]);
+assert.deepEqual((await outbox(omarP, 'comments')).map((r) => r.channels), [['email']], 'email-only choice respected');
+await as(nina, 'select public.send_reminder($1)', [omarP]);
+const [reminder] = await outbox(omarP, 'reminders');
+assert.deepEqual(reminder.channels, ['push', 'email'], 'reminders default to push and email');
+assert.deepEqual(reminder.data.owed, [{ currency: 'USD', amount: 10 }], 'reminder carries what is owed');
+await rejects(as(nina, 'select public.send_reminder($1)', [omarP]), /already reminded/);
+await rejects(as(omar, 'select public.send_reminder($1)', [ninaP]), /don’t owe you/);
+await as(omar, `select public.save_expense($1)`, [{ description: 'Payment', amount: 10, currency: 'USD', is_payment: true, shares: [{ profile_id: omarP, paid: 10, owed: 0 }, { profile_id: ninaP, paid: 0, owed: 10 }] }]);
+assert.deepEqual((await outbox(ninaP, 'payments')).map((r) => r.channels), [['push', 'email']], 'payments notify');
+await as(omar, 'select public.register_push_token($1, $2)', ['ExponentPushToken[omar-device-1]', 'android']);
+assert.equal((await db.query('select profile_id from public.push_tokens')).rows[0].profile_id, omarP, 'push token saved');
+await as(nina, 'select public.register_push_token($1, $2)', ['ExponentPushToken[omar-device-1]', 'android']);
+assert.equal((await db.query('select profile_id from public.push_tokens')).rows[0].profile_id, ninaP, 'token follows whoever signs in');
+await rejects(as(omar, 'select * from public.push_tokens'), /permission denied/);
+await rejects(as(omar, 'select * from public.notification_outbox'), /permission denied/);
+await rejects(as(omar, 'select * from public.weekly_summaries()'), /permission denied/);
+const weekly = (await db.query('select * from public.weekly_summaries() where profile_id = $1', [ninaP])).rows[0];
+assert.deepEqual(weekly.channels, ['email'], 'weekly summary defaults to email');
+
 // Account deletion: login gone, profile anonymized, shared history kept for the others
 await as(dave, 'select public.delete_my_account()');
 assert.equal((await db.query('select count(*)::int as n from auth.users where id = $1', [dave])).rows[0].n, 0, 'auth user removed');
