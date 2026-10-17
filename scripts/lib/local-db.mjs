@@ -13,6 +13,7 @@ const AUTH_STUB = `
     email text unique,
     encrypted_password text,
     raw_user_meta_data jsonb default '{}',
+    email_confirmed_at timestamptz default now(), -- like Supabase with "Confirm email" off
     created_at timestamptz not null default now()
   );
   create table auth.schema_migrations (name text primary key, applied_at timestamptz not null default now());
@@ -33,6 +34,8 @@ export async function openDatabase({ dataDir, migrationsDir = 'supabase/migratio
   const db = dataDir ? new PGlite(dataDir, options) : new PGlite(options);
   const { rows } = await db.query(`select 1 from information_schema.schemata where schema_name = 'auth'`);
   if (rows.length === 0) await db.exec(AUTH_STUB);
+  // databases made before the stub had this column
+  await db.exec('alter table auth.users add column if not exists email_confirmed_at timestamptz default now()');
 
   const applied = new Set((await db.query('select name from auth.schema_migrations')).rows.map((r) => r.name));
   for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {

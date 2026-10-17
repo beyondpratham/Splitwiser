@@ -164,6 +164,40 @@ assert.equal((await as(bob, 'select * from public.find_users_by_contacts($1, $2)
 await rejects(as(bob, 'select public.add_friend_by_phone($1)', ['+919876543210']), /nobody on SplitWiser/);
 await as(alice, 'update public.profiles set phone_discoverable = true where id = $1', [aliceP]);
 
+// Hardening
+// an invited profile is claimed only once the email is confirmed, and takes the name chosen at sign-up
+const [{ add_friend: invitedP }] = await as(alice, `select public.add_friend('pat@example.com', 'Pat (from work)')`);
+const { rows: [{ id: patU }] } = await db.query(
+  `insert into auth.users (email, raw_user_meta_data, email_confirmed_at) values ('pat@example.com', '{"name":"Patricia"}', null) returning id`,
+);
+assert.equal((await db.query('select user_id from public.profiles where id = $1', [invitedP])).rows[0].user_id, null, 'unconfirmed sign-up claims nothing');
+await db.query('update auth.users set email_confirmed_at = now() where id = $1', [patU]);
+const [claimed] = (await db.query('select user_id, name from public.profiles where id = $1', [invitedP])).rows;
+assert.deepEqual(claimed, { user_id: patU, name: 'Patricia' }, 'confirmed email claims the invite with their own name');
+assert.equal((await db.query('select count(*)::int as n from public.profiles where user_id = $1', [patU])).rows[0].n, 1, 'no duplicate profile');
+
+await rejects(as(alice, 'select public.expense_snapshot($1)', [e1]), /permission denied/);
+await rejects(as(alice, `select public.add_comment($1, repeat('x', 2001))`, [e1]), /comments_body_length/);
+await rejects(as(alice, `update public.profiles set name = repeat('x', 81) where id = $1`, [aliceP]), /profiles_name_length/);
+await rejects(as(bob, 'select * from public.find_users_by_contacts($1, $2)', [[], Array.from({ length: 3001 }, (_, i) => `+9190000${String(i).padStart(5, '0')}`)]), /too many contacts/);
+
+// leaving a group and removing friends only through the checked functions
+await rejects(as(bob, 'delete from public.group_members where group_id = $1 and profile_id = $2', [gid, bobP]).then(async () => {
+  if ((await db.query('select 1 from public.group_members where group_id = $1 and profile_id = $2', [gid, bobP])).rows.length) throw new Error('blocked by RLS');
+}), /blocked by RLS/);
+await rejects(as(bob, 'select public.leave_group($1)', [gid]), /settle up in this group/);
+await as(bob, 'delete from public.friendships where profile_id = $1', [bobP]);
+assert.ok((await db.query('select 1 from public.friendships where profile_id = $1', [bobP])).rows.length > 0, 'friends are not dropped by a direct delete');
+
+// editing an expense someone deleted fails cleanly instead of rewriting it
+const [{ save_expense: gone }] = await as(alice, 'select public.save_expense($1)', [{ description: 'Snacks', amount: 6, currency: 'USD', shares: [{ profile_id: aliceP, paid: 6, owed: 3 }, { profile_id: bobP, paid: 0, owed: 3 }] }]);
+await as(bob, 'select public.delete_expense($1)', [gone]);
+await rejects(as(alice, 'select public.save_expense($1)', [{ id: gone, description: 'Snacks!', amount: 6, currency: 'USD', shares: [{ profile_id: aliceP, paid: 6, owed: 3 }, { profile_id: bobP, paid: 0, owed: 3 }] }]), /was deleted/);
+await rejects(as(alice, 'select public.save_expense($1)', [{ description: 'Bad', amount: 6, currency: 'usd', shares: [{ profile_id: aliceP, paid: 6, owed: 3 }, { profile_id: bobP, paid: 0, owed: 3 }] }]), /expenses_currency_format/);
+
+// the weekly summary skips people with nothing to report
+assert.equal((await db.query('select * from public.weekly_summaries() where profile_id = $1', [invitedP])).rows.length, 0, 'nothing to report, no email');
+
 // Account deletion: login gone, profile anonymized, shared history kept for the others
 await as(dave, 'select public.delete_my_account()');
 assert.equal((await db.query('select count(*)::int as n from auth.users where id = $1', [dave])).rows[0].n, 0, 'auth user removed');
