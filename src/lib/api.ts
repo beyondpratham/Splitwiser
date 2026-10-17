@@ -294,9 +294,7 @@ export const useUpdateGroup = () =>
   );
 
 export const useLeaveGroup = () =>
-  useAction(({ groupId, profileId }: { groupId: string; profileId: string }) =>
-    unwrap<null>(supabase.from('group_members').delete().eq('group_id', groupId).eq('profile_id', profileId)),
-  );
+  useAction(({ groupId }: { groupId: string; profileId?: string }) => unwrap<null>(supabase.rpc('leave_group', { gid: groupId })));
 
 export const useDeleteGroup = () =>
   useAction((id: string) => unwrap<null>(supabase.from('groups').delete().eq('id', id)));
