@@ -25,13 +25,21 @@ const EXPENSE_SELECT = '*, expense_shares(*)';
 
 // ─── Queries ────────────────────────────────────────────────────────────────
 
+/** Everything about a person that others may see (phone numbers are private). */
+const PROFILE_COLUMNS = 'id, user_id, email, name, avatar_color, default_currency, avatar';
+
 export function useMe() {
   const { session } = useAuth();
   const uid = session?.user.id;
   return useQuery({
     queryKey: ['me', uid],
     enabled: !!uid,
-    queryFn: () => unwrap<Profile>(supabase.from('profiles').select('*').eq('user_id', uid!).single()),
+    queryFn: async () => {
+      const profile = await unwrap<Omit<Profile, 'phone'>>(supabase.from('profiles').select(PROFILE_COLUMNS).eq('user_id', uid!).single());
+      // phone numbers are private, so mine comes from a separate call
+      const own = await unwrap<Pick<Profile, 'phone' | 'phone_discoverable'>>(supabase.rpc('my_private_profile'));
+      return { ...profile, ...own } as Profile;
+    },
   });
 }
 
@@ -39,7 +47,7 @@ export function useMe() {
 export function usePeople() {
   const q = useQuery({
     queryKey: ['profiles'],
-    queryFn: () => unwrap<Profile[]>(supabase.from('profiles').select('*')),
+    queryFn: async () => (await unwrap<Omit<Profile, 'phone'>[]>(supabase.from('profiles').select(PROFILE_COLUMNS))).map((p): Profile => ({ ...p, phone: null })),
   });
   const byId = useMemo(() => new Map((q.data ?? []).map((p) => [p.id, p])), [q.data]);
   return { ...q, byId };
@@ -294,7 +302,7 @@ export const useDeleteGroup = () =>
   useAction((id: string) => unwrap<null>(supabase.from('groups').delete().eq('id', id)));
 
 export const useUpdateProfile = () =>
-  useAction(({ id, ...patch }: Partial<Pick<Profile, 'name' | 'avatar_color' | 'default_currency' | 'phone' | 'avatar'>> & { id: string }) =>
+  useAction(({ id, ...patch }: Partial<Pick<Profile, 'name' | 'avatar_color' | 'default_currency' | 'phone' | 'avatar' | 'phone_discoverable'>> & { id: string }) =>
     unwrap<null>(supabase.from('profiles').update(patch).eq('id', id)),
   );
 

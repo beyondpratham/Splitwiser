@@ -29,7 +29,7 @@ export function QrCode({ value, size, color = '#0E1A14', background = '#FFFFFF' 
 export function profileQrValue(p: { email: string | null; name: string; phone?: string | null }) {
   const params = new URLSearchParams();
   if (p.email) params.set('e', p.email);
-  if (p.phone) params.set('p', p.phone);
+  if (!p.email && p.phone) params.set('p', p.phone); // never share a number when an email will do
   params.set('n', p.name);
   return `splitwiser://add?${params.toString()}`;
 }

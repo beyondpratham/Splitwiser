@@ -6,12 +6,11 @@ export interface Prefs {
   privacy: {
     appLock: boolean;
     hideBalances: boolean;
-    showPhone: boolean;
   };
 }
 
 export const DEFAULT_PREFS: Prefs = {
-  privacy: { appLock: false, hideBalances: false, showPhone: true },
+  privacy: { appLock: false, hideBalances: false },
 };
 
 const KEY = 'splitwiser.prefs';

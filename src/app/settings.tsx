@@ -10,7 +10,7 @@ import { Page } from '@/components/Page';
 import { ActionSheet } from '@/components/Sheet';
 import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
-import { useDeleteAccount, useNotificationPrefs, useSetNotificationPref } from '@/lib/api';
+import { useDeleteAccount, useMe, useNotificationPrefs, useSetNotificationPref, useUpdateProfile } from '@/lib/api';
 import { registerForPush, signOut, type Channel, type NotifyCategory } from '@/lib/notifications';
 import { usePrefs } from '@/lib/prefs';
 import { backendLocked } from '@/lib/supabase';
@@ -39,6 +39,8 @@ export default function Settings() {
   const { prefs, set } = usePrefs();
   const deleteAccount = useDeleteAccount();
   const { confirm, toast, fail } = useFeedback();
+  const me = useMe().data;
+  const updateProfile = useUpdateProfile();
   const notify = useNotificationPrefs();
   const setNotify = useSetNotificationPref();
   const [choosing, setChoosing] = useState<NotifyCategory | null>(null);
@@ -131,9 +133,15 @@ export default function Settings() {
         />
         <ListItem
           left={<Tile icon="phone-lock-outline" />}
-          title="Show my number to friends"
-          subtitle="Friends see your phone number on your profile"
-          right={<Switch label="Show my number to friends" value={prefs.privacy.showPhone} onValueChange={(v) => set('privacy', 'showPhone', v)} />}
+          title="Find me by my number"
+          subtitle="People who have your number can find you when they sync contacts. Nobody can see your number."
+          right={
+            <Switch
+              label="Find me by my number"
+              value={me?.phone_discoverable ?? true}
+              onValueChange={(v) => me && updateProfile.mutate({ id: me.id, phone_discoverable: v }, { onError: fail })}
+            />
+          }
         />
       </ListGroup>
 

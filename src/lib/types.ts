@@ -7,7 +7,10 @@ export interface Profile {
   name: string;
   avatar_color: string;
   default_currency: string;
+  /** Only ever filled in for yourself; other people's numbers are private. */
   phone: string | null;
+  /** Whether people with my number can find me (sync contacts, add by phone). Only known for yourself. */
+  phone_discoverable?: boolean;
   /** `emoji:<id>` preset, a small `data:` photo, or null for initials */
   avatar: string | null;
 }
