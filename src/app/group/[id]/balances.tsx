@@ -32,7 +32,7 @@ export default function GroupBalances() {
               return (
                 <ListItem
                   key={profile_id}
-                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} />}
+                  left={<Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} avatar={p?.avatar} />}
                   title={profile_id === me?.id ? `${p?.name ?? 'You'} (you)` : p?.name ?? '…'}
                   subtitle={
                     rows.length === 0 ? (
@@ -70,7 +70,7 @@ export default function GroupBalances() {
                 return (
                   <ListItem
                     key={i}
-                    left={<Avatar name={from?.name ?? '?'} color={from?.avatar_color ?? '#999'} />}
+                    left={<Avatar name={from?.name ?? '?'} color={from?.avatar_color ?? '#999'} avatar={from?.avatar} />}
                     title={`${firstName(from, me?.id)} ${d.from === me?.id ? 'owe' : 'owes'} ${firstName(to, me?.id).replace(/^You$/, 'you')}`}
                     subtitle={
                       <T variant="label" numeric tone={d.to === me?.id ? 'owed' : d.from === me?.id ? 'owe' : 'dim'}>

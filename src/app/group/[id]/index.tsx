@@ -68,7 +68,7 @@ export default function GroupScreen() {
             const p = byId.get(m.profile_id);
             return (
               <View key={m.profile_id} style={{ marginLeft: i ? -10 : 0, borderRadius: 16, borderWidth: 2, borderColor: t.bg }}>
-                <Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} size={28} />
+                <Avatar name={p?.name ?? '?'} color={p?.avatar_color ?? '#999'} avatar={p?.avatar} size={28} />
               </View>
             );
           })}

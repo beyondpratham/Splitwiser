@@ -51,7 +51,7 @@ export default function Friends() {
     return (
       <ListItem
         key={f.id}
-        left={<Avatar name={f.name} color={f.avatar_color} />}
+        left={<Avatar name={f.name} color={f.avatar_color} avatar={f.avatar} />}
         title={f.name}
         subtitle={
           bal.length === 0 ? (f.user_id ? 'settled up' : 'invited · settled up') : perGroup.length > 1 ? <Breakdown lines={perGroup} groupNames={groupNames} /> : undefined

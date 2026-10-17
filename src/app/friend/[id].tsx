@@ -75,7 +75,7 @@ export default function FriendScreen() {
     >
       <View style={styles.hero}>
         <Animated.View entering={ZoomIn.springify().damping(12)}>
-          <Avatar name={friend.name} color={friend.avatar_color} size={92} />
+          <Avatar name={friend.name} color={friend.avatar_color} avatar={friend.avatar} size={92} />
         </Animated.View>
         <T variant="title" style={{ marginTop: space.md, textAlign: 'center' }}>
           {friend.name}

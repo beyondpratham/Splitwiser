@@ -7,6 +7,9 @@ export interface Profile {
   name: string;
   avatar_color: string;
   default_currency: string;
+  phone: string | null;
+  /** `emoji:<id>` preset, a small `data:` photo, or null for initials */
+  avatar: string | null;
 }
 
 export type GroupKind = 'home' | 'trip' | 'couple' | 'other';
