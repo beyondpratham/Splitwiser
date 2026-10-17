@@ -1,13 +1,14 @@
 # SplitWiser
 
-An ad-free Splitwise alternative for Android, built with Expo (React Native), Material 3 and Supabase.
+An ad-free Splitwise alternative for Android, built with Expo (React Native) and Supabase, with a liquid-glass design.
 
 - **Groups and friends.** Expenses can be inside a group or between friends directly. Friends can be added by email before they have an account.
 - **Splits.** Equal (with people left out), exact amounts, percentages, or shares. Several people can pay for one expense.
 - **Balances.** A running total per friend and per group, with optional debt simplification (fewest payments). Settle up in one tap.
 - **Activity and comments.** A live activity feed, comments on each expense, full edit history, and undo or restore for deleted expenses.
 - **Currencies and categories.** Each expense has its own currency, plus 20 categories that are guessed from the description. Insights show spending by month and by category.
-- **Material 3 design.** A full color scheme generated from the brand green (light and dark), expressive grouped lists, a collapsing large top app bar, an extended FAB that shrinks on scroll, a navigation bar with a springy indicator, draggable bottom sheets, Material dialogs, snackbars and the Material date picker. Motion uses Reanimated springs throughout.
+- **Liquid-glass design.** Frosted, rounded glass panes with a bright rim and soft shadow (after the Personal-Portfolio glass component), a floating glass tab bar, sheets and dialogs, Inter type, and a green, grey, black and white palette. Light, dark or follow-the-system, switchable in Settings.
+- **Splitwise layout.** Opens on Friends; tabs for Friends, Groups, Activity and Account (Edit profile, Settings, Help & support, Buy me a coffee).
 
 ## Everything stays local to the project
 
@@ -17,6 +18,15 @@ Nothing is installed globally:
 - **The JDK 17, Android SDK and Gradle cache** are downloaded into `./.toolchain/` by `npm run android:setup`. That folder is git-ignored.
 
 Requirements: Node 20+ and Git Bash (comes with Git for Windows).
+
+## Try it on this computer
+
+```bash
+npm install
+npm run local            # local backend + web app with live reload
+```
+
+Open the printed address (usually http://localhost:8081), tap **Use local server** and sign in with `alex@demo.app` / `demo1234` (also sam, priya, jordan). `npm run local:reset` restores the demo data. `npm run ui:check` clicks through every main flow in a headless browser and saves screenshots to `dist/screenshots`.
 
 ## Build the APK
 
@@ -64,8 +74,8 @@ src/app/            screens (Expo Router; files are routes)
   expense/[id].tsx  expense detail, comments, history
   add-expense.tsx   add / edit expense
   settle-up.tsx     record a payment
-src/components/     Material UI kit (Page, lists, sheets, pickers, navigation bar…)
-src/theme/          generated Material 3 palette + Paper themes + motion springs
+src/components/     liquid-glass UI kit (Glass, Page, controls, sheets, tab bar…)
+src/theme/          design tokens, light/dark/system theme, motion springs
 src/lib/            data hooks (api.ts), money math, balances, categories
 supabase/migrations schema, row-level security, RPCs
 scripts/            toolchain + APK build, tests, icon and theme generators
@@ -77,4 +87,4 @@ Each expense stores, per person, how much they **paid** and how much they **owe*
 
 ## Publishing to Google Play
 
-Create an upload keystore, then build an Android App Bundle with `npx eas-cli build --platform android` or `./gradlew bundleRelease` using that keystore. The app icon comes from `npm run icons` and the color scheme from `npm run theme`.
+Create an upload keystore, then build an Android App Bundle with `npx eas-cli build --platform android` or `./gradlew bundleRelease` using that keystore. The app icon comes from `npm run icons`.
