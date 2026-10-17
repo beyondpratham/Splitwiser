@@ -88,6 +88,17 @@ assert.equal((await as(carol, 'select * from public.my_balances where other_id =
 await as(alice, `select public.restore_expense($1)`, [e1]);
 assert.equal((await as(carol, 'select * from public.my_balances where other_id = $1', [aliceP])).length, 1);
 
+// Removing a friend: blocked while you share a group or owe each other, allowed once neither applies
+await rejects(as(alice, 'select public.remove_friend($1)', [bobP]), /share a group|settle up/);
+const zoe = await signUp('zoe@example.com', 'Zoe');
+const [{ id: zoeP }] = await as(zoe, 'select public.me() as id');
+await as(alice, `select public.add_friend('zoe@example.com')`);
+await as(alice, `select public.save_expense($1)`, [{ description: 'Tea', amount: 4, currency: 'USD', shares: [{ profile_id: aliceP, paid: 4, owed: 2 }, { profile_id: zoeP, paid: 0, owed: 2 }] }]);
+await rejects(as(alice, 'select public.remove_friend($1)', [zoeP]), /settle up/);
+await as(zoe, `select public.save_expense($1)`, [{ description: 'Payment', amount: 2, currency: 'USD', is_payment: true, shares: [{ profile_id: zoeP, paid: 2, owed: 0 }, { profile_id: aliceP, paid: 0, owed: 2 }] }]);
+await as(alice, 'select public.remove_friend($1)', [zoeP]);
+assert.equal((await as(alice, 'select * from public.friendships where friend_id = $1', [zoeP])).length, 0, 'friendship removed');
+
 // Account deletion: login gone, profile anonymized, shared history kept for the others
 await as(dave, 'select public.delete_my_account()');
 assert.equal((await db.query('select count(*)::int as n from auth.users where id = $1', [dave])).rows[0].n, 0, 'auth user removed');

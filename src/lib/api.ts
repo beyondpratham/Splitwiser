@@ -259,6 +259,8 @@ export const useAddFriend = () =>
     unwrap<string>(supabase.rpc('add_friend', { friend_email: email, friend_name: name ?? null })),
   );
 
+export const useRemoveFriend = () => useAction((friendId: string) => unwrap<null>(supabase.rpc('remove_friend', { fid: friendId })));
+
 export const useCreateGroup = () =>
   useAction((g: { name: string; emoji: string; kind: string; currency: string; memberIds: string[] }) =>
     unwrap<string>(
