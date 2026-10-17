@@ -46,3 +46,27 @@ test('rebuilds paid/owed so the nets and totals match exactly', () => {
     shares.forEach((x, i) => assert.equal(x.paid - x.owed, nets[i], 'net preserved'));
   }
 });
+
+// ── prominent colour (used to colour the QR code from the profile photo) ──
+import jpeg from 'jpeg-js';
+import { prominentFromJpegBase64, prominentFromPixels } from '../src/lib/dominant.ts';
+
+test('finds the vivid colour and ignores greys', () => {
+  // 60% grey pixels, 40% strong blue
+  const px: number[] = [];
+  for (let i = 0; i < 60; i++) px.push(128, 128, 128, 255);
+  for (let i = 0; i < 40; i++) px.push(20, 90, 220, 255);
+  assert.equal(prominentFromPixels(px), '#145adc');
+  assert.equal(prominentFromPixels([200, 200, 200, 255, 10, 10, 10, 255]), null);
+});
+
+test('decodes a JPEG photo and picks its colour', () => {
+  const w = 16;
+  const h = 16;
+  const data = new Uint8Array(w * h * 4);
+  for (let i = 0; i < w * h; i++) data.set(i < 64 ? [240, 240, 240, 255] : [230, 80, 20, 255], i * 4);
+  const encoded = jpeg.encode({ data, width: w, height: h }, 90).data;
+  const color = prominentFromJpegBase64(Buffer.from(encoded).toString('base64'))!;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+  assert.ok(r > 190 && g < 120 && b < 60, `expected orange, got ${color}`);
+});

@@ -16,17 +16,24 @@ import { T } from '@/components/Text';
 import { Tile } from '@/components/Tile';
 import { useMe, useUpdateProfile } from '@/lib/api';
 import { AVATARS, isPhoto } from '@/lib/avatars';
+import { prominentFromJpegBase64 } from '@/lib/dominant';
 import { currencySymbol } from '@/lib/currencies';
 import { normalizePhone } from '@/lib/phone';
-import { R, space, useTheme } from '@/theme';
+import { space, useTheme } from '@/theme';
 
-/** Square-crop and shrink a picked photo to a small JPEG data URI (fits in the profile row). */
+/** Square-crop and shrink a picked photo to a small JPEG data URI (fits in the profile row), plus its main colour. */
 async function toAvatarDataUri(uri: string) {
   const context = ImageManipulator.manipulate(uri);
   context.resize({ width: 256, height: 256 });
   const image = await context.renderAsync();
   const result = await image.saveAsync({ format: SaveFormat.JPEG, base64: true, compress: 0.7 });
-  return `data:image/jpeg;base64,${result.base64}`;
+  let color: string | null = null;
+  try {
+    color = prominentFromJpegBase64(result.base64!);
+  } catch {
+    // keep the current colour if the photo can't be read
+  }
+  return { uri: `data:image/jpeg;base64,${result.base64}`, color };
 }
 
 export default function Profile() {
@@ -47,9 +54,9 @@ export default function Profile() {
   const phoneError = phoneValue.trim() && !normalized ? 'Include the country code, like +91 98765 43210' : null;
   const dirty = (nameValue.trim() && nameValue.trim() !== me.name) || (phone !== null && normalized !== (me.phone ?? null) && !phoneError);
 
-  const setAvatar = (avatar: string | null) =>
+  const setAvatar = (avatar: string | null, color?: string | null) =>
     update
-      .mutateAsync({ id: me.id, avatar })
+      .mutateAsync({ id: me.id, avatar, ...(color ? { avatar_color: color } : {}) })
       .then(() => haptic.success())
       .catch(fail);
 
@@ -63,7 +70,8 @@ export default function Profile() {
       const result = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       if (result.canceled || !result.assets?.[0]) return;
       setBusy(true);
-      await setAvatar(await toAvatarDataUri(result.assets[0].uri));
+      const photo = await toAvatarDataUri(result.assets[0].uri);
+      await setAvatar(photo.uri, photo.color);
       toast('Profile photo updated');
     } catch (e) {
       fail(e);
@@ -109,7 +117,7 @@ export default function Profile() {
             return (
               <Pressable
                 key={a.id}
-                onPress={() => setAvatar(`emoji:${a.id}`)}
+                onPress={() => setAvatar(`emoji:${a.id}`, a.ink)}
                 accessibilityRole="button"
                 accessibilityLabel={`${a.id} avatar`}
                 accessibilityState={{ selected: on }}
@@ -164,5 +172,5 @@ const styles = StyleSheet.create({
   section: { marginHorizontal: space.lg, marginBottom: space.xl },
   label: { marginBottom: space.sm, marginLeft: space.sm },
   avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, padding: space.md, justifyContent: 'center' },
-  avatarCell: { width: 52, height: 52, borderRadius: R, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5 },
+  avatarCell: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5 },
 });
