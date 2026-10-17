@@ -4,18 +4,13 @@ Everything the app needs on the server. Do these once on your Supabase project, 
 
 ## 1. Database
 
-In **SQL Editor → New query**, paste and run each file from `migrations/` that the project doesn't have yet,
-oldest first:
+Everything is in one file: **`schema.sql`**. In **SQL Editor → New query**, paste all of it and press **Run**.
+It's safe to run again at any time: it only adds what's missing and refreshes the functions and access rules,
+so use it for a new project and after every update. Then run `check.sql` the same way: every row should
+say `true`. You don't need any other saved queries.
 
-1. `20261010000000_init.sql`
-2. `20261011000000_account_deletion.sql`
-3. `20261015000000_remove_friend.sql`
-4. `20261017000000_profile_extras.sql`
-5. `20261018000000_notifications.sql`
-6. `20261019000000_phone_privacy.sql`
-7. `20261020000000_hardening.sql`
-
-Then check with `npm run test:remote`.
+`schema.sql` is generated from the files in `migrations/` (`npm run db:schema`); the tests run it on an empty
+database, a partly set-up one and a complete one. `npm run test:remote` checks the live project.
 
 ## 2. Sign-in emails
 
