@@ -183,6 +183,8 @@ await run('Activity and account sections', 'light', async (page, shot) => {
 
   await tab(page, 'Account').click();
   await button(page, 'Buy me a coffee').waitFor();
+  await visible(page.locator('canvas')).waitFor(); // the coffee animation
+  await page.waitForTimeout(2500); // let it play through
   await shot('account');
   await label(page, 'Show my QR code').click();
   await text(page, 'Friends can scan this in SplitWiser → Add friend to add you instantly.').waitFor();
