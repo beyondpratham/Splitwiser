@@ -93,5 +93,5 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: space.lg, gap: space.md },
   card: { padding: space.lg, gap: space.xs },
   step: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
-  num: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  num: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
 });

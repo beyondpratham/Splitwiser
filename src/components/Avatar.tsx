@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 import { isPhoto, presetFor } from '@/lib/avatars';
 import { categoryById, PAYMENT_CATEGORY } from '@/lib/categories';
-import { font, useTheme, withAlpha, R } from '@/theme';
+import { font, useTheme, withAlpha } from '@/theme';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 
@@ -39,7 +39,7 @@ export function Avatar({ name, color, avatar, size = 42 }: { name: string; color
 /** Group icon: an emoji on a small glass squircle. */
 export function EmojiTile({ emoji, size = 46 }: { emoji: string; size?: number }) {
   return (
-    <Glass contentStyle={[styles.center, { width: size, height: size }]}>
+    <Glass radius={size / 2} contentStyle={[styles.center, { width: size, height: size }]}>
       <Text style={{ fontSize: size * 0.5 }} allowFontScaling={false}>
         {emoji}
       </Text>
@@ -58,7 +58,7 @@ export function CategoryTile({ category, payment, size = 44 }: { category: strin
         {
           width: size,
           height: size,
-          borderRadius: Math.min(R, size * 0.32),
+          borderRadius: size / 2,
           backgroundColor: withAlpha(c.color, t.dark ? 0.22 : 0.16),
           borderWidth: StyleSheet.hairlineWidth * 2,
           borderColor: withAlpha(c.color, 0.25),

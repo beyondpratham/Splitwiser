@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   section: { marginHorizontal: space.lg, marginBottom: space.xl },
   intro: { alignItems: 'center', gap: space.md, padding: space.xl },
   introIcon: { width: 76, height: 76, alignItems: 'center', justifyContent: 'center' },
-  num: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  num: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   summary: { flexDirection: 'row', padding: space.lg },
   track: { height: 8, borderRadius: 4, marginHorizontal: space.lg, marginBottom: space.lg, overflow: 'hidden' },
   fill: { height: 8, borderRadius: 4 },

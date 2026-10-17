@@ -3,7 +3,7 @@ import { useEffect, useState, type ComponentProps } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { font, motion, space, useTheme, R } from '@/theme';
+import { font, motion, space, useTheme, PILL } from '@/theme';
 import { haptic } from './Controls';
 import { Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
@@ -34,7 +34,7 @@ export function NavigationBar({ state, navigation }: TabBarProps) {
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 10 }]}>
-      <Glass variant="chrome" blur contentStyle={styles.bar}>
+      <Glass variant="chrome" blur strong contentStyle={styles.bar}>
         <View style={styles.row} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
           {item > 0 && (
             <Animated.View
@@ -86,6 +86,6 @@ const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: space.lg, right: space.lg },
   bar: { padding: 4 },
   row: { flexDirection: 'row', height: 56 },
-  indicator: { position: 'absolute', left: 4, top: 0, bottom: 0, borderRadius: R - 4, borderWidth: StyleSheet.hairlineWidth },
+  indicator: { position: 'absolute', left: 4, top: 0, bottom: 0, borderRadius: PILL, borderWidth: StyleSheet.hairlineWidth },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
 });

@@ -70,9 +70,11 @@ export const dark: typeof light = {
 export type Tokens = typeof light;
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
-/** One corner radius for every card, button, field, chip and sheet: slightly rounder than a rectangle. */
-export const R = 14;
-export const radius = { sm: R, md: R, lg: R, xl: R, pane: R, pill: R };
+/** Corner radius for cards and panes: generously rounded. */
+export const R = 26;
+/** Controls (buttons, fields, chips, search, tab bar) are full pills, like a search bar. */
+export const PILL = 999;
+export const radius = { sm: R, md: R, lg: R, xl: R, pane: R, pill: PILL };
 
 export const font = {
   regular: 'Inter_400Regular',

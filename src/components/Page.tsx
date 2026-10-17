@@ -1,4 +1,5 @@
 import { BlurTargetView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
@@ -12,7 +13,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { motion, space, useTheme, R } from '@/theme';
+import { motion, space, useTheme, PILL } from '@/theme';
 import { Button, haptic, IconButton } from './Controls';
 import { Backdrop, BlurTargetContext, Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
@@ -182,8 +183,10 @@ function TopBar({
   return (
     <View style={[styles.bar, { paddingTop: insetTop, height: insetTop + BAR }]} pointerEvents="box-none">
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, chrome]}>
-        <Glass variant="chrome" blur radius={0} style={StyleSheet.absoluteFill} contentStyle={{ flex: 1 }} />
+        {/* frosted, dense bar so scrolled content reads as clearly behind it */}
+        <Glass variant="chrome" blur strong radius={0} style={StyleSheet.absoluteFill} contentStyle={{ flex: 1 }} />
         <View style={[styles.barLine, { backgroundColor: t.line }]} />
+        <LinearGradient colors={[t.bg, 'transparent']} style={styles.barFade} />
       </Animated.View>
       <View style={styles.barRow}>
         {variant === 'dialog' ? (
@@ -239,6 +242,7 @@ function Fab({ label, icon, onPress, collapsed, bottom }: { label: string; icon:
 const styles = StyleSheet.create({
   bar: { position: 'absolute', top: 0, left: 0, right: 0 },
   barLine: { position: 'absolute', left: 0, right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  barFade: { position: 'absolute', left: 0, right: 0, bottom: -18, height: 18, opacity: 0.6 },
   barRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg },
   barTitle: { flex: 1, paddingHorizontal: space.xs },
   largeTitle: { paddingHorizontal: space.xl, paddingTop: space.xs, paddingBottom: space.lg },
@@ -248,7 +252,7 @@ const styles = StyleSheet.create({
     height: 56,
     minWidth: 56,
     paddingHorizontal: 16,
-    borderRadius: R,
+    borderRadius: PILL,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -13,7 +13,7 @@ import { describeActivity, snapshotImpact, timeAgo } from '@/lib/activity';
 import { useActivity, useGroups, useMe, usePeople } from '@/lib/api';
 import { formatMoney } from '@/lib/money';
 import type { Activity, Profile } from '@/lib/types';
-import { space, useTheme, R } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 function dayLabel(iso: string) {
   const d = new Date(iso);
@@ -160,5 +160,5 @@ const styles = StyleSheet.create({
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 76 },
   strike: { textDecorationLine: 'line-through' },
   badge: { position: 'absolute', right: -6, bottom: -6 },
-  commentTile: { width: 44, height: 44, borderRadius: R, alignItems: 'center', justifyContent: 'center' },
+  commentTile: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });

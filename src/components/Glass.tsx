@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { createContext, useContext, type ReactNode, type RefObject } from 'react';
 import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { motion, R, useTheme } from '@/theme';
+import { motion, R, useTheme, PILL } from '@/theme';
 
 /** Android only blurs content inside a BlurTargetView; screens provide theirs through this context. */
 export const BlurTargetContext = createContext<RefObject<View | null> | null>(null);
@@ -56,7 +56,7 @@ export function Glass({
   const t = useTheme();
   const target = useContext(BlurTargetContext);
   const pressed = useSharedValue(0);
-  const r = radius ?? R;
+  const r = radius ?? (variant === 'pill' || variant === 'chrome' ? PILL : R);
 
   const drop =
     variant === 'pane' || variant === 'chrome'
@@ -89,7 +89,7 @@ export function Glass({
       {canBlur && (
         <>
           <BlurView
-            intensity={variant === 'chrome' ? 60 : 40}
+            intensity={variant === 'chrome' ? 95 : 45}
             tint={t.blurTint}
             style={StyleSheet.absoluteFill}
             {...(Platform.OS === 'android' && target ? { blurTarget: target, blurMethod: 'dimezisBlurViewSdk31Plus' as const } : {})}

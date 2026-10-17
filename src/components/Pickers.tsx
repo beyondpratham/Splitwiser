@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text as RNText, View } from 'react-native';
 import { CATEGORIES } from '@/lib/categories';
 import { CURRENCIES, currencySymbol, POPULAR } from '@/lib/currencies';
-import { space, useTheme, withAlpha, R } from '@/theme';
+import { space, useTheme, withAlpha } from '@/theme';
 import { Field, haptic } from './Controls';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
@@ -30,7 +30,7 @@ export function CurrencyMark({ code, size = 40 }: { code: string; size?: number 
   const t = useTheme();
   const symbol = currencySymbol(code);
   return (
-    <View style={[styles.mark, { width: size, height: size, backgroundColor: t.accentSoft, borderRadius: Math.min(R, size * 0.32) }]}>
+    <View style={[styles.mark, { width: size, height: size, backgroundColor: t.accentSoft, borderRadius: size / 2 }]}>
       <T variant="subhead" numberOfLines={1} adjustsFontSizeToFit style={{ color: t.accentText, fontSize: symbol.length > 2 ? size * 0.3 : size * 0.45 }}>
         {symbol}
       </T>
@@ -193,6 +193,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   catCell: { width: '31.6%' },
   catInner: { alignItems: 'center', gap: space.sm, paddingVertical: space.md, paddingHorizontal: space.xs },
-  catIcon: { width: 44, height: 44, borderRadius: R, alignItems: 'center', justifyContent: 'center' },
-  emoji: { width: 60, height: 60, borderRadius: R, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth * 2 },
+  catIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  emoji: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth * 2 },
 });
